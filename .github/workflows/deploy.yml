@@ -2,8 +2,16 @@ name: Deploy DistributorHub
 on:
   push:
     branches: [ main ]
+
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   test:
     name: 🧪 Quality Assurance
@@ -31,8 +39,8 @@ jobs:
           cd Chaos
           npm run test:edge-cases
 
-  deploy:
-    name: 🚀 Build and Deploy
+  build:
+    name: 📦 Build Application
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -57,7 +65,19 @@ jobs:
       - name: Fix SPA Routing for GitHub Pages
         run: cp build/index.html build/404.html
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          folder: build
+          path: build
+
+  deploy:
+    name: 🚀 Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
