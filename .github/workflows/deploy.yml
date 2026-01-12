@@ -5,7 +5,35 @@ on:
 permissions:
   contents: write
 jobs:
-  build-and-deploy:
+  test:
+    name: 🧪 Quality Assurance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Root Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Chaos Dependencies
+        run: |
+          cd Chaos
+          npm ci
+
+      - name: Run Chaos Edge Case Tests
+        run: |
+          cd Chaos
+          npm run test:edge-cases
+
+  deploy:
+    name: 🚀 Build and Deploy
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,16 +47,6 @@ jobs:
 
       - name: Install App Dependencies
         run: npm ci --legacy-peer-deps
-
-      - name: Install Chaos Test Dependencies
-        run: |
-          cd Chaos
-          npm ci
-
-      - name: Run Chaos Edge Case Tests
-        run: |
-          cd Chaos
-          npm run test:edge-cases
 
       - name: Build Application
         run: npm run build
