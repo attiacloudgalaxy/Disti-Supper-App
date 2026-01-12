@@ -1,0 +1,343 @@
+# Chaos Engineering Configuration
+# Distribution Company - Chaos Monkey Style Testing
+
+---
+# Infrastructure Configuration
+infrastructure:
+  kubernetes:
+    namespace: distribution-app
+    environments:
+      - staging
+      - qa  # Never run on production without approval
+    
+# Experiment Definitions
+experiments:
+  
+  # ============================================
+  # LEVEL 1: Pod & Container Failures
+  # ============================================
+  
+  - name: random-pod-termination
+    description: Randomly kill pods to test auto-recovery
+    enabled: true
+    schedule: "0 */4 * * *"  # Every 4 hours
+    target:
+      kind: Deployment
+      labels:
+        app: distribution-api
+    action:
+      type: pod-failure
+      count: 1
+      duration: 0  # Immediate kill
+    expected_recovery_time: 30s
+    abort_conditions:
+      - error_rate > 5%
+      - latency_p99 > 5000ms
+
+  - name: container-cpu-stress
+    description: Stress CPU to test throttling behavior
+    enabled: true
+    schedule: "0 2 * * 1"  # Monday 2 AM
+    target:
+      kind: Pod
+      labels:
+        app: order-service
+    action:
+      type: cpu-stress
+      workers: 4
+      load: 80
+      duration: 120s
+    expected_behavior:
+      - graceful_degradation
+      - no_timeout_errors
+
+  - name: container-memory-pressure
+    description: Consume memory to test OOM handling
+    enabled: true
+    schedule: "0 3 * * 2"  # Tuesday 3 AM
+    target:
+      kind: Pod
+      labels:
+        app: inventory-service
+    action:
+      type: memory-stress
+      workers: 2
+      size: 256MB
+      duration: 60s
+    expected_behavior:
+      - circuit_breaker_opens
+      - fallback_activated
+
+  # ============================================
+  # LEVEL 2: Network Chaos
+  # ============================================
+
+  - name: network-latency-injection
+    description: Add latency between services
+    enabled: true
+    schedule: "0 4 * * 3"  # Wednesday 4 AM
+    target:
+      kind: Service
+      name: partner-gateway
+    action:
+      type: network-delay
+      latency: 500ms
+      jitter: 100ms
+      correlation: 50%
+      duration: 300s
+    expected_behavior:
+      - timeout_retries_work
+      - circuit_breaker_half_open
+
+  - name: network-partition
+    description: Simulate network split between services
+    enabled: true
+    schedule: "0 5 * * 4"  # Thursday 5 AM
+    target:
+      source:
+        kind: Deployment
+        labels:
+          app: api-gateway
+      destination:
+        kind: Service
+        name: payment-service
+    action:
+      type: network-partition
+      direction: both
+      duration: 60s
+    expected_behavior:
+      - payment_queue_fills
+      - user_sees_pending_status
+      - no_data_loss
+
+  - name: packet-loss
+    description: Simulate unreliable network
+    enabled: true
+    schedule: "0 6 * * 5"  # Friday 6 AM
+    target:
+      kind: Pod
+      labels:
+        app: shipping-service
+    action:
+      type: network-loss
+      percent: 10%
+      correlation: 25%
+      duration: 180s
+    expected_behavior:
+      - retries_succeed
+      - idempotency_maintained
+
+  # ============================================
+  # LEVEL 3: Database Chaos
+  # ============================================
+
+  - name: database-connection-exhaustion
+    description: Exhaust DB connection pool
+    enabled: true
+    schedule: "0 1 * * 6"  # Saturday 1 AM
+    target:
+      kind: Database
+      name: postgres-primary
+    action:
+      type: connection-flood
+      connections: 100
+      hold_duration: 30s
+    expected_behavior:
+      - connection_queue_works
+      - graceful_timeout_errors
+      - no_connection_leaks
+
+  - name: database-slow-queries
+    description: Inject slow query responses
+    enabled: true
+    schedule: "0 2 * * 6"  # Saturday 2 AM
+    target:
+      kind: Database
+      name: postgres-primary
+    action:
+      type: query-delay
+      delay: 2000ms
+      affected_queries: 30%
+      duration: 120s
+    expected_behavior:
+      - read_replicas_used
+      - cache_hit_increases
+      - timeout_handling_works
+
+  - name: redis-node-failure
+    description: Kill Redis node to test failover
+    enabled: true
+    schedule: "0 3 * * 0"  # Sunday 3 AM
+    target:
+      kind: StatefulSet
+      name: redis-cluster
+      pod_index: 1
+    action:
+      type: pod-failure
+      duration: 0
+    expected_behavior:
+      - sentinel_promotes_replica
+      - session_data_preserved
+      - cache_rebuild_automatic
+
+  # ============================================
+  # LEVEL 4: External Service Failures
+  # ============================================
+
+  - name: payment-gateway-failure
+    description: Simulate payment provider outage
+    enabled: true
+    schedule: "0 4 * * 0"  # Sunday 4 AM
+    target:
+      kind: ExternalService
+      name: stripe-api
+    action:
+      type: http-fault
+      responses:
+        - status: 503
+          percentage: 100%
+      duration: 300s
+    expected_behavior:
+      - payments_queued
+      - retry_with_exponential_backoff
+      - user_notified_of_delay
+      - fallback_gateway_used
+
+  - name: shipping-api-timeout
+    description: Simulate shipping API slowness
+    enabled: true
+    schedule: "0 5 * * 0"  # Sunday 5 AM
+    target:
+      kind: ExternalService
+      name: fedex-api
+    action:
+      type: http-delay
+      delay: 10000ms
+      percentage: 80%
+      duration: 180s
+    expected_behavior:
+      - cached_rates_used
+      - manual_rate_option_shown
+      - order_not_blocked
+
+  # ============================================
+  # LEVEL 5: Application-Level Chaos
+  # ============================================
+
+  - name: random-exception-injection
+    description: Inject random exceptions in code paths
+    enabled: true
+    schedule: "manual"  # Only run manually
+    target:
+      kind: Application
+      name: distribution-api
+      modules:
+        - order-processing
+        - inventory-management
+    action:
+      type: exception-injection
+      exception_types:
+        - NullPointerException
+        - TimeoutException
+        - DatabaseException
+      percentage: 5%
+      duration: 300s
+    expected_behavior:
+      - exceptions_caught
+      - graceful_error_messages
+      - no_stack_traces_to_user
+      - proper_logging
+
+  - name: clock-skew
+    description: Test time-sensitive operations
+    enabled: true
+    schedule: "0 6 * * 0"  # Sunday 6 AM
+    target:
+      kind: Pod
+      labels:
+        app: auth-service
+    action:
+      type: time-chaos
+      offset: "+2h"
+      duration: 120s
+    expected_behavior:
+      - jwt_validation_works
+      - scheduled_jobs_handle_skew
+      - expiry_logic_correct
+
+# ============================================
+# SAFETY CONTROLS
+# ============================================
+
+safety:
+  # Global kill switch
+  emergency_stop:
+    enabled: true
+    trigger_conditions:
+      - error_rate > 10%
+      - p99_latency > 10000ms
+      - cpu_usage > 95%
+      - memory_usage > 95%
+      - active_alarms > 3
+  
+  # Blast radius limits
+  blast_radius:
+    max_pods_affected: 2
+    max_percentage: 30%
+    excluded_namespaces:
+      - kube-system
+      - monitoring
+      - production  # NEVER chaos in prod
+  
+  # Business hours protection
+  time_restrictions:
+    allowed_hours: "00:00-06:00"  # Only run at night
+    excluded_days:
+      - holidays
+      - month_end  # High business activity
+    freeze_periods:
+      - "2026-01-15/2026-01-20"  # Major release
+
+# ============================================
+# OBSERVABILITY
+# ============================================
+
+observability:
+  metrics:
+    prometheus:
+      endpoint: "http://prometheus:9090"
+      queries:
+        error_rate: 'rate(http_requests_total{status=~"5.."}[1m])'
+        latency_p99: 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))'
+  
+  logging:
+    loki:
+      endpoint: "http://loki:3100"
+      labels:
+        chaos_experiment: true
+  
+  tracing:
+    jaeger:
+      endpoint: "http://jaeger:14268"
+
+  alerts:
+    slack:
+      webhook: "${SLACK_CHAOS_WEBHOOK}"
+      channel: "#chaos-engineering"
+    pagerduty:
+      service_key: "${PAGERDUTY_KEY}"
+      severity_threshold: critical
+
+# ============================================
+# REPORTING
+# ============================================
+
+reporting:
+  format: html
+  storage: s3://chaos-reports/
+  retention: 90d
+  include:
+    - experiment_summary
+    - metrics_before_after
+    - recovery_timeline
+    - recommendations

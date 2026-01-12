@@ -1,0 +1,28 @@
+<external_setup>
+Feature: Email Verification Redirect Behavior
+
+When you sign up for an account, you will receive an email confirmation link. Here's what to expect:
+
+What Happens When You Click the Email Link:
+- You click the email confirmation link
+- You get redirected to localhost (this is normal and expected)
+- Your account verification is actually completed successfully
+- You need to manually navigate back to this platform to continue with login
+
+Note: The localhost redirect does NOT mean verification failed. Email verification is working correctly.
+
+Demo Credentials for Testing:
+You can use these pre-configured accounts to test the application immediately:
+
+1. Admin User:
+   - Email: admin@distributorhub.com
+   - Password: Admin@2026
+   - Role: Full administrative access
+
+2. Partner User:
+   - Email: partner@techcorp.com
+   - Password: Partner@2026
+   - Role: Partner portal access
+
+These accounts are pre-populated with sample data to demonstrate the full functionality of the distributor management platform.
+</external_setup>

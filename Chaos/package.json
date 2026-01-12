@@ -1,0 +1,38 @@
+{
+  "name": "distribution-test-plan",
+  "version": "1.0.0",
+  "description": "Comprehensive test suite for distribution company with chaos engineering",
+  "scripts": {
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:edge-cases": "jest tests/edge-case-tests.ts",
+    "test:e2e": "playwright test",
+    "test:load": "k6 run tests/load-chaos-test.js",
+    "test:load:spike": "k6 run --env SCENARIO=spike tests/load-chaos-test.js",
+    "test:chaos": "chaos run chaos/chaos-config.yaml",
+    "test:security": "npm run test:security:zap && npm run test:security:deps",
+    "test:security:zap": "zap-cli quick-scan --self-contained http://localhost:3000",
+    "test:security:deps": "npm audit --audit-level=moderate",
+    "lint": "eslint . --ext .ts,.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@playwright/test": "^1.40.0",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
