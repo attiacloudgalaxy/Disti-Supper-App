@@ -1,42 +1,81 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useMsal } from '@azure/msal-react';
 import Button from '../../../components/ui/Button';
 import Icon from '../../../components/AppIcon';
 import { useAuth } from '../../../contexts/AuthContext';
+import { loginRequest, isMsalConfigured } from '../../../lib/msalConfig';
 
 const SSOOptions = () => {
-  const { signInWithAzure, signInWithGoogle } = useAuth();
+  const { signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState(null);
+
+  // Check if MSAL is configured
+  const msalConfigured = isMsalConfigured();
+
+  // Only call useMsal hook if Azure AD is configured
+  // The hook is safe to call unconditionally since App.jsx wraps with MsalProvider when configured
+  let instance = null;
+  try {
+    if (msalConfigured) {
+      const msal = useMsal();
+      instance = msal.instance;
+    }
+  } catch (e) {
+    // MsalProvider not available - this is expected when Azure AD is not configured
+  }
+
+  const handleMicrosoftLogin = useCallback(async () => {
+    setLoading('microsoft');
+    setError(null);
+
+    if (!msalConfigured) {
+      setError('Microsoft login is not configured. Please contact administrator.');
+      setLoading(null);
+      return;
+    }
+
+    if (!instance) {
+      setError('Microsoft authentication service is not available.');
+      setLoading(null);
+      return;
+    }
+
+    try {
+      await instance.loginRedirect(loginRequest);
+    } catch (err) {
+      console.error('Microsoft login error:', err);
+      setError(err.message || 'Microsoft login failed. Please try again.');
+      setLoading(null);
+    }
+  }, [instance, msalConfigured]);
+
+  const handleGoogleLogin = useCallback(async () => {
+    setLoading('google');
+    setError(null);
+
+    const { error: authError } = await signInWithGoogle();
+
+    if (authError) {
+      setError(authError.message || 'Google login failed. Please try again.');
+      setLoading(null);
+    }
+  }, [signInWithGoogle]);
 
   const ssoProviders = [
     {
       id: 'microsoft',
       name: 'Microsoft',
       icon: 'Building2',
-      color: '#0078D4',
-      handler: signInWithAzure
+      handler: handleMicrosoftLogin
     },
     {
       id: 'google',
       name: 'Google',
       icon: 'Mail',
-      color: '#4285F4',
-      handler: signInWithGoogle
+      handler: handleGoogleLogin
     }
   ];
-
-  const handleSSOLogin = async (provider) => {
-    setLoading(provider.id);
-    setError(null);
-
-    const { error: authError } = await provider.handler();
-
-    if (authError) {
-      setError(authError.message || `${provider.name} login failed. Please try again.`);
-      setLoading(null);
-    }
-    // On success, the OAuth flow will redirect the user
-  };
 
   return (
     <div className="mt-6">
@@ -63,7 +102,7 @@ const SSOOptions = () => {
             key={provider?.id}
             variant="outline"
             size="default"
-            onClick={() => handleSSOLogin(provider)}
+            onClick={provider.handler}
             className="w-full"
             disabled={loading !== null}
           >
