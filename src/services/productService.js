@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { validateProduct, sanitizeString } from '../utils/validators';
 import { logDataChange, AuditEventType } from './auditService';
+import { notifyLowStock, isEmailEnabled } from './emailService';
 
 const convertToSnakeCase = (obj) => {
   return {
@@ -105,6 +106,12 @@ export const productService = {
 
       // Log update
       await logDataChange('product', id, 'update', oldData, productData);
+
+      // Check for low stock and send alert (fire-and-forget)
+      const threshold = data?.low_stock_threshold || 10;
+      if (isEmailEnabled() && data?.available <= threshold && oldData?.available > threshold) {
+        notifyLowStock({ ...data, stock_quantity: data?.available, min_stock_level: threshold }, ['admin@distributorhub.com']).catch(console.error);
+      }
 
       return { data: data ? convertToCamelCase(data) : null, error: null };
     } catch (error) {

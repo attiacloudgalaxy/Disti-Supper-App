@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { validateQuote, sanitizeString } from '../utils/validators';
 import { logDataChange, AuditEventType } from './auditService';
+import { notifyQuoteCreated, isEmailEnabled } from './emailService';
 
 const convertToSnakeCase = (obj) => {
   return {
@@ -88,6 +89,11 @@ export const quoteService = {
 
       // Log creation
       await logDataChange('quote', data?.id, 'create', null, quoteData);
+
+      // Send email notification (fire-and-forget)
+      if (isEmailEnabled() && quote.customerEmail) {
+        notifyQuoteCreated(data, quote.customerEmail).catch(console.error);
+      }
 
       return { data: data ? convertToCamelCase(data) : null, error: null };
     } catch (error) {

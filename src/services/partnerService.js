@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { validatePartner, sanitizeString } from '../utils/validators';
 import { logDataChange, AuditEventType } from './auditService';
+import { notifyPartnerCreated, notifyPartnerStatusChanged, isEmailEnabled } from './emailService';
 
 const convertToSnakeCase = (obj) => {
   return {
@@ -97,6 +98,11 @@ export const partnerService = {
       // Log the creation for audit trail
       await logDataChange('partner', data?.id, 'create', null, partnerData);
 
+      // Send email notification to admins (fire-and-forget)
+      if (isEmailEnabled()) {
+        notifyPartnerCreated(data, ['admin@distributorhub.com']).catch(console.error);
+      }
+
       return { data: data ? convertToCamelCase(data) : null, error: null };
     } catch (error) {
       return { data: null, error };
@@ -122,6 +128,11 @@ export const partnerService = {
 
       // Log the update
       await logDataChange('partner', id, 'update', oldData, partnerData);
+
+      // Send email notification if status changed (fire-and-forget)
+      if (isEmailEnabled() && oldData?.status !== data?.status) {
+        notifyPartnerStatusChanged(data, oldData?.status || 'unknown', ['admin@distributorhub.com']).catch(console.error);
+      }
 
       return { data: data ? convertToCamelCase(data) : null, error: null };
     } catch (error) {

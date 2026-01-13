@@ -52,3 +52,8 @@ export const loginRequest = {
 export const isMsalConfigured = () => {
     return !!import.meta.env.VITE_AZURE_CLIENT_ID;
 };
+
+// Get MSAL instance (lazy initialization safe)
+export const getMsalInstance = () => {
+    return msalInstance;
+};
