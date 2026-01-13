@@ -102,14 +102,22 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Get the base path for OAuth redirects (handles GitHub Pages subdirectory)
+  const getRedirectUrl = (path = '/executive-dashboard') => {
+    // Use import.meta.env.BASE_URL which is set by Vite based on the 'base' config
+    const basePath = import.meta.env.BASE_URL || '/'
+    return window.location.origin + basePath + path.replace(/^\//, '')
+  }
+
   // Azure AD (Entra ID) OAuth sign-in
   const signInWithAzure = async () => {
     try {
+      const redirectUrl = getRedirectUrl()
       const { data, error } = await supabase?.auth?.signInWithOAuth({
         provider: 'azure',
         options: {
           scopes: 'email profile openid',
-          redirectTo: window.location.origin + '/executive-dashboard'
+          redirectTo: redirectUrl
         }
       })
       return { data, error }
@@ -121,10 +129,11 @@ export const AuthProvider = ({ children }) => {
   // Google OAuth sign-in
   const signInWithGoogle = async () => {
     try {
+      const redirectUrl = getRedirectUrl()
       const { data, error } = await supabase?.auth?.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/executive-dashboard'
+          redirectTo: redirectUrl
         }
       })
       return { data, error }
