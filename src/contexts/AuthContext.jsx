@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
     onChange: (event, session) => {
       setUser(session?.user ?? null)
       setLoading(false)
-      
+
       if (session?.user) {
         profileOperations?.load(session?.user?.id) // Fire-and-forget
       } else {
@@ -92,13 +92,44 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (updates) => {
     if (!user) return { error: { message: 'No user logged in' } }
-    
+
     try {
       const { data, error } = await supabase?.from('user_profiles')?.update(updates)?.eq('id', user?.id)?.select()?.single()
       if (!error) setUserProfile(data)
       return { data, error }
     } catch (error) {
       return { error: { message: 'Network error. Please try again.' } }
+    }
+  }
+
+  // Azure AD (Entra ID) OAuth sign-in
+  const signInWithAzure = async () => {
+    try {
+      const { data, error } = await supabase?.auth?.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          scopes: 'email profile openid',
+          redirectTo: window.location.origin + '/executive-dashboard'
+        }
+      })
+      return { data, error }
+    } catch (error) {
+      return { error: { message: 'Azure login failed. Please try again.' } }
+    }
+  }
+
+  // Google OAuth sign-in
+  const signInWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase?.auth?.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/executive-dashboard'
+        }
+      })
+      return { data, error }
+    } catch (error) {
+      return { error: { message: 'Google login failed. Please try again.' } }
     }
   }
 
@@ -110,8 +141,11 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     updateProfile,
+    signInWithAzure,
+    signInWithGoogle,
     isAuthenticated: !!user
   }
+
 
   return (
     <AuthContext.Provider value={value}>
