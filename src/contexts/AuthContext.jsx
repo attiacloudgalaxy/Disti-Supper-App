@@ -109,24 +109,68 @@ export const AuthProvider = ({ children }) => {
     return window.location.origin + basePath + path.replace(/^\//, '')
   }
 
-  // Azure AD (Entra ID) OAuth sign-in
+  // Azure AD (Entra ID) direct authentication using MSAL
   const signInWithAzure = async () => {
     try {
-      const redirectUrl = getRedirectUrl()
-      const { data, error } = await supabase?.auth?.signInWithOAuth({
-        provider: 'azure',
-        options: {
-          scopes: 'email profile openid',
-          redirectTo: redirectUrl
+      // Dynamically import MSAL to avoid issues if not configured
+      const { msalInstance, loginRequest, isMsalConfigured } = await import('../lib/msalConfig')
+
+      if (!isMsalConfigured()) {
+        return { error: { message: 'Azure AD is not configured. Please set VITE_AZURE_CLIENT_ID and VITE_AZURE_TENANT_ID environment variables.' } }
+      }
+
+      // Initialize MSAL if needed
+      await msalInstance.initialize()
+
+      // Use popup for better UX (avoids page reload issues with redirect on GitHub Pages)
+      const response = await msalInstance.loginPopup(loginRequest)
+
+      if (response && response.account) {
+        // Get the ID token to use with Supabase
+        const tokenResponse = await msalInstance.acquireTokenSilent({
+          ...loginRequest,
+          account: response.account
+        })
+
+        // Sign in to Supabase using the Azure token
+        // This creates/updates the user in Supabase with Azure profile info
+        const { data, error } = await supabase?.auth?.signInWithIdToken({
+          provider: 'azure',
+          token: tokenResponse.idToken,
+          nonce: '' // Azure doesn't require nonce for ID tokens
+        })
+
+        if (error) {
+          // If Supabase integration fails, still allow the user in with basic session
+          console.warn('Supabase token sync failed, using MSAL session:', error)
+          // Set a basic user object from Azure token
+          setUser({
+            id: response.account.localAccountId,
+            email: response.account.username,
+            user_metadata: {
+              full_name: response.account.name,
+              email: response.account.username,
+              provider: 'azure'
+            }
+          })
+          return { data: response, error: null }
         }
-      })
-      return { data, error }
+
+        return { data, error: null }
+      }
+
+      return { error: { message: 'Azure login was cancelled or failed.' } }
     } catch (error) {
-      return { error: { message: 'Azure login failed. Please try again.' } }
+      console.error('Azure login error:', error)
+      // Handle user cancelled popup
+      if (error.errorCode === 'user_cancelled') {
+        return { error: { message: 'Login cancelled by user.' } }
+      }
+      return { error: { message: error.message || 'Azure login failed. Please try again.' } }
     }
   }
 
-  // Google OAuth sign-in
+  // Google OAuth sign-in (still uses Supabase OAuth)
   const signInWithGoogle = async () => {
     try {
       const redirectUrl = getRedirectUrl()

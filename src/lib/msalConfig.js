@@ -8,12 +8,20 @@ import { PublicClientApplication } from '@azure/msal-browser';
  * - VITE_AZURE_TENANT_ID: Directory (tenant) ID from Azure (use 'common' for multi-tenant)
  */
 
+// Get the base path for redirects (handles GitHub Pages subdirectory)
+const getBaseUrl = () => {
+    if (typeof window === 'undefined') return '/';
+    const basePath = import.meta.env.BASE_URL || '/';
+    return window.location.origin + basePath;
+};
+
 const msalConfig = {
     auth: {
         clientId: import.meta.env.VITE_AZURE_CLIENT_ID || '',
         authority: `https://login.microsoftonline.com/${import.meta.env.VITE_AZURE_TENANT_ID || 'common'}`,
-        redirectUri: window.location.origin,
-        postLogoutRedirectUri: window.location.origin,
+        // Use base URL with trailing slash removed for redirect
+        redirectUri: getBaseUrl().replace(/\/$/, ''),
+        postLogoutRedirectUri: getBaseUrl().replace(/\/$/, ''),
         navigateToLoginRequestUrl: true,
     },
     cache: {
