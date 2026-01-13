@@ -61,6 +61,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SHOW_DEMO_CREDENTIALS: ${{ secrets.VITE_SHOW_DEMO_CREDENTIALS }}
 
       - name: Fix SPA Routing for GitHub Pages
         run: cp build/index.html build/404.html
