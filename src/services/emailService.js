@@ -11,49 +11,66 @@ import { getMsalInstance, isMsalConfigured } from '../lib/msalConfig';
 // Microsoft Graph API endpoint for sending emails
 const GRAPH_API_ENDPOINT = 'https://graph.microsoft.com/v1.0';
 
-// Email configuration
+// Email configuration - Using shared mailbox for sending
 const EMAIL_CONFIG = {
-    senderEmail: import.meta.env.VITE_EMAIL_SENDER || 'noreply@distributorhub.com',
-    enabled: import.meta.env.VITE_EMAIL_ENABLED !== 'false',
-    appName: 'DistributorHub'
+  senderEmail: import.meta.env.VITE_EMAIL_SENDER || 'noreply@usc.net.sa',
+  senderName: import.meta.env.VITE_EMAIL_SENDER_NAME || 'DistributorHub Notifications',
+  enabled: import.meta.env.VITE_EMAIL_ENABLED !== 'false',
+  appName: 'DistributorHub',
+  // Use shared mailbox - requires "Send As" permission on the mailbox
+  useSharedMailbox: true
 };
 
 /**
  * Get access token for Microsoft Graph API with Mail.Send scope
+ * Note: Mail.Send.Shared permission is needed for sending from shared mailboxes
  */
 const getGraphToken = async () => {
-    if (!isMsalConfigured()) {
-        console.warn('MSAL not configured, email sending disabled');
-        return null;
+  if (!isMsalConfigured()) {
+    console.warn('MSAL not configured, email sending disabled');
+    return null;
+  }
+
+  const msalInstance = getMsalInstance();
+  if (!msalInstance) return null;
+
+  try {
+    await msalInstance.initialize();
+    const accounts = msalInstance.getAllAccounts();
+
+    if (accounts.length === 0) {
+      console.warn('No authenticated user, email sending requires login');
+      return null;
     }
 
-    const msalInstance = getMsalInstance();
-    if (!msalInstance) return null;
+    // Request token with Mail.Send permission (covers shared mailbox with "Send As" rights)
+    const tokenResponse = await msalInstance.acquireTokenSilent({
+      scopes: ['Mail.Send', 'Mail.Send.Shared'],
+      account: accounts[0]
+    });
 
+    return tokenResponse.accessToken;
+  } catch (error) {
+    console.error('Failed to get Graph API token:', error);
+    // Try with interactive login if silent fails
     try {
-        await msalInstance.initialize();
-        const accounts = msalInstance.getAllAccounts();
-
-        if (accounts.length === 0) {
-            console.warn('No authenticated user, email sending requires login');
-            return null;
-        }
-
-        // Request token with Mail.Send permission
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-            scopes: ['Mail.Send'],
-            account: accounts[0]
-        });
-
-        return tokenResponse.accessToken;
-    } catch (error) {
-        console.error('Failed to get Graph API token:', error);
-        return null;
+      const msalInstance = getMsalInstance();
+      const tokenResponse = await msalInstance.acquireTokenPopup({
+        scopes: ['Mail.Send', 'Mail.Send.Shared']
+      });
+      return tokenResponse.accessToken;
+    } catch (popupError) {
+      console.error('Interactive token acquisition failed:', popupError);
+      return null;
     }
+  }
 };
 
 /**
  * Send an email using Microsoft Graph API
+ * Uses the shared mailbox (noreply@usc.net.sa) as the sender
+ * Requires the logged-in user to have "Send As" permission on the shared mailbox
+ * 
  * @param {Object} options - Email options
  * @param {string|string[]} options.to - Recipient email(s)
  * @param {string} options.subject - Email subject
@@ -63,68 +80,79 @@ const getGraphToken = async () => {
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 export const sendEmail = async ({ to, subject, body, cc, importance = 'normal' }) => {
-    if (!EMAIL_CONFIG.enabled) {
-        console.log('Email notifications disabled');
-        return { success: false, error: 'Email notifications are disabled' };
-    }
+  if (!EMAIL_CONFIG.enabled) {
+    console.log('Email notifications disabled');
+    return { success: false, error: 'Email notifications are disabled' };
+  }
 
-    const accessToken = await getGraphToken();
-    if (!accessToken) {
-        return { success: false, error: 'Not authenticated or MSAL not configured' };
-    }
+  const accessToken = await getGraphToken();
+  if (!accessToken) {
+    return { success: false, error: 'Not authenticated or MSAL not configured' };
+  }
 
-    // Convert single recipient to array
-    const recipients = Array.isArray(to) ? to : [to];
+  // Convert single recipient to array
+  const recipients = Array.isArray(to) ? to : [to];
 
-    // Build the email message
-    const message = {
-        message: {
-            subject: `[${EMAIL_CONFIG.appName}] ${subject}`,
-            importance,
-            body: {
-                contentType: 'HTML',
-                content: wrapEmailTemplate(body)
-            },
-            toRecipients: recipients.map(email => ({
-                emailAddress: { address: email }
-            })),
-            ...(cc && {
-                ccRecipients: (Array.isArray(cc) ? cc : [cc]).map(email => ({
-                    emailAddress: { address: email }
-                }))
-            })
-        },
-        saveToSentItems: true
-    };
-
-    try {
-        const response = await fetch(`${GRAPH_API_ENDPOINT}/me/sendMail`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(message)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+  // Build the email message with shared mailbox as sender
+  const message = {
+    message: {
+      subject: `[${EMAIL_CONFIG.appName}] ${subject}`,
+      importance,
+      body: {
+        contentType: 'HTML',
+        content: wrapEmailTemplate(body)
+      },
+      // Set the From address to the shared mailbox
+      from: {
+        emailAddress: {
+          address: EMAIL_CONFIG.senderEmail,
+          name: EMAIL_CONFIG.senderName
         }
+      },
+      toRecipients: recipients.map(email => ({
+        emailAddress: { address: email }
+      })),
+      ...(cc && {
+        ccRecipients: (Array.isArray(cc) ? cc : [cc]).map(email => ({
+          emailAddress: { address: email }
+        }))
+      })
+    },
+    saveToSentItems: false // Don't save to user's sent items when using shared mailbox
+  };
 
-        console.log(`Email sent successfully to ${recipients.join(', ')}`);
-        return { success: true };
-    } catch (error) {
-        console.error('Failed to send email:', error);
-        return { success: false, error: error.message };
+  try {
+    // Use /me/sendMail - the "from" field in the message specifies the shared mailbox
+    // This works when the user has "Send As" permission on the shared mailbox
+    const response = await fetch(`${GRAPH_API_ENDPOINT}/me/sendMail`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(message)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error?.message || `HTTP ${response.status}`;
+      console.error('Email send failed:', errorData);
+      throw new Error(errorMessage);
     }
+
+    console.log(`Email sent successfully from ${EMAIL_CONFIG.senderEmail} to ${recipients.join(', ')}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send email:', error);
+    return { success: false, error: error.message };
+  }
 };
 
 /**
  * Wrap email content in a professional HTML template
  */
 const wrapEmailTemplate = (content) => {
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -219,10 +247,10 @@ const wrapEmailTemplate = (content) => {
  * Partner Notifications
  */
 export const notifyPartnerCreated = async (partner, adminEmails) => {
-    return sendEmail({
-        to: adminEmails,
-        subject: 'New Partner Registration',
-        body: `
+  return sendEmail({
+    to: adminEmails,
+    subject: 'New Partner Registration',
+    body: `
       <h2>New Partner Registered</h2>
       <p>A new partner has been registered in DistributorHub:</p>
       <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -233,17 +261,17 @@ export const notifyPartnerCreated = async (partner, adminEmails) => {
       </table>
       <p><a href="${window.location.origin}/partner-management" class="btn">View Partner Details</a></p>
     `,
-        importance: 'normal'
-    });
+    importance: 'normal'
+  });
 };
 
 export const notifyPartnerStatusChanged = async (partner, oldStatus, adminEmails) => {
-    const statusClass = partner.status === 'active' ? 'success' :
-        partner.status === 'pending' ? 'warning' : 'danger';
-    return sendEmail({
-        to: adminEmails,
-        subject: `Partner Status Changed: ${partner.company_name}`,
-        body: `
+  const statusClass = partner.status === 'active' ? 'success' :
+    partner.status === 'pending' ? 'warning' : 'danger';
+  return sendEmail({
+    to: adminEmails,
+    subject: `Partner Status Changed: ${partner.company_name}`,
+    body: `
       <h2>Partner Status Update</h2>
       <p>The status of <strong>${partner.company_name}</strong> has been updated:</p>
       <p style="text-align: center; margin: 24px 0;">
@@ -253,17 +281,17 @@ export const notifyPartnerStatusChanged = async (partner, oldStatus, adminEmails
       </p>
       <p><a href="${window.location.origin}/partner-management" class="btn">View Partner</a></p>
     `
-    });
+  });
 };
 
 /**
  * Deal Notifications
  */
 export const notifyDealCreated = async (deal, assigneeEmail) => {
-    return sendEmail({
-        to: assigneeEmail,
-        subject: `New Deal Assigned: ${deal.name}`,
-        body: `
+  return sendEmail({
+    to: assigneeEmail,
+    subject: `New Deal Assigned: ${deal.name}`,
+    body: `
       <h2>New Deal Assigned to You</h2>
       <p>You have been assigned a new deal:</p>
       <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -274,18 +302,18 @@ export const notifyDealCreated = async (deal, assigneeEmail) => {
       </table>
       <p><a href="${window.location.origin}/deal-management" class="btn">View Deal</a></p>
     `,
-        importance: 'high'
-    });
+    importance: 'high'
+  });
 };
 
 export const notifyDealStatusChanged = async (deal, oldStage, recipientEmails) => {
-    const isWon = deal.stage === 'won' || deal.stage === 'closed_won';
-    const isLost = deal.stage === 'lost' || deal.stage === 'closed_lost';
+  const isWon = deal.stage === 'won' || deal.stage === 'closed_won';
+  const isLost = deal.stage === 'lost' || deal.stage === 'closed_lost';
 
-    return sendEmail({
-        to: recipientEmails,
-        subject: `Deal Update: ${deal.name} - ${deal.stage}`,
-        body: `
+  return sendEmail({
+    to: recipientEmails,
+    subject: `Deal Update: ${deal.name} - ${deal.stage}`,
+    body: `
       <h2>Deal Status Update</h2>
       <p>The deal <strong>${deal.name}</strong> has been updated:</p>
       <p style="text-align: center; margin: 24px 0;">
@@ -296,18 +324,18 @@ export const notifyDealStatusChanged = async (deal, oldStage, recipientEmails) =
       ${isWon ? '<p style="text-align: center; font-size: 24px;">🎉 Congratulations on winning this deal!</p>' : ''}
       <p><a href="${window.location.origin}/deal-management" class="btn">View Deal</a></p>
     `,
-        importance: isWon || isLost ? 'high' : 'normal'
-    });
+    importance: isWon || isLost ? 'high' : 'normal'
+  });
 };
 
 /**
  * Quote Notifications
  */
 export const notifyQuoteCreated = async (quote, recipientEmail) => {
-    return sendEmail({
-        to: recipientEmail,
-        subject: `New Quote Created: ${quote.quote_number || quote.id}`,
-        body: `
+  return sendEmail({
+    to: recipientEmail,
+    subject: `New Quote Created: ${quote.quote_number || quote.id}`,
+    body: `
       <h2>New Quote Generated</h2>
       <p>A new quote has been created:</p>
       <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -318,14 +346,14 @@ export const notifyQuoteCreated = async (quote, recipientEmail) => {
       </table>
       <p><a href="${window.location.origin}/quote-generation" class="btn">View Quote</a></p>
     `
-    });
+  });
 };
 
 export const notifyQuoteExpiring = async (quote, ownerEmail) => {
-    return sendEmail({
-        to: ownerEmail,
-        subject: `⚠️ Quote Expiring Soon: ${quote.quote_number || quote.id}`,
-        body: `
+  return sendEmail({
+    to: ownerEmail,
+    subject: `⚠️ Quote Expiring Soon: ${quote.quote_number || quote.id}`,
+    body: `
       <h2 style="color: #856404;">Quote Expiring Soon</h2>
       <p>The following quote is about to expire:</p>
       <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -336,18 +364,18 @@ export const notifyQuoteExpiring = async (quote, ownerEmail) => {
       <p>Please take action before the quote expires.</p>
       <p><a href="${window.location.origin}/quote-generation" class="btn">Review Quote</a></p>
     `,
-        importance: 'high'
-    });
+    importance: 'high'
+  });
 };
 
 /**
  * Inventory Notifications
  */
 export const notifyLowStock = async (product, adminEmails) => {
-    return sendEmail({
-        to: adminEmails,
-        subject: `🚨 Low Stock Alert: ${product.name}`,
-        body: `
+  return sendEmail({
+    to: adminEmails,
+    subject: `🚨 Low Stock Alert: ${product.name}`,
+    body: `
       <h2 style="color: #721c24;">Low Stock Alert</h2>
       <p>The following product has low stock and requires attention:</p>
       <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -358,21 +386,21 @@ export const notifyLowStock = async (product, adminEmails) => {
       </table>
       <p><a href="${window.location.origin}/inventory-management" class="btn">Manage Inventory</a></p>
     `,
-        importance: 'high'
-    });
+    importance: 'high'
+  });
 };
 
 /**
  * Compliance Notifications
  */
 export const notifyComplianceDeadline = async (item, responsibleEmails) => {
-    const daysUntil = Math.ceil((new Date(item.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-    const urgency = daysUntil <= 3 ? 'danger' : daysUntil <= 7 ? 'warning' : 'info';
+  const daysUntil = Math.ceil((new Date(item.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+  const urgency = daysUntil <= 3 ? 'danger' : daysUntil <= 7 ? 'warning' : 'info';
 
-    return sendEmail({
-        to: responsibleEmails,
-        subject: `⏰ Compliance Deadline Approaching: ${item.name}`,
-        body: `
+  return sendEmail({
+    to: responsibleEmails,
+    subject: `⏰ Compliance Deadline Approaching: ${item.name}`,
+    body: `
       <h2>Compliance Deadline Reminder</h2>
       <p>The following compliance item requires attention:</p>
       <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -383,15 +411,15 @@ export const notifyComplianceDeadline = async (item, responsibleEmails) => {
       </table>
       <p><a href="${window.location.origin}/compliance-tracking" class="btn">View Compliance</a></p>
     `,
-        importance: daysUntil <= 3 ? 'high' : 'normal'
-    });
+    importance: daysUntil <= 3 ? 'high' : 'normal'
+  });
 };
 
 export const notifyComplianceViolation = async (item, adminEmails) => {
-    return sendEmail({
-        to: adminEmails,
-        subject: `🚫 Compliance Violation: ${item.name}`,
-        body: `
+  return sendEmail({
+    to: adminEmails,
+    subject: `🚫 Compliance Violation: ${item.name}`,
+    body: `
       <h2 style="color: #721c24;">Compliance Violation Detected</h2>
       <p>A compliance violation has been detected and requires immediate attention:</p>
       <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -402,9 +430,60 @@ export const notifyComplianceViolation = async (item, adminEmails) => {
       <p style="color: #721c24;"><strong>Please address this issue immediately.</strong></p>
       <p><a href="${window.location.origin}/compliance-tracking" class="btn">View Details</a></p>
     `,
-        importance: 'high'
-    });
+    importance: 'high'
+  });
 };
 
 // Export email configuration check
 export const isEmailEnabled = () => EMAIL_CONFIG.enabled && isMsalConfigured();
+
+/**
+ * Get detailed email service status
+ */
+export const getEmailServiceStatus = () => {
+  return {
+    enabled: EMAIL_CONFIG.enabled,
+    msalConfigured: isMsalConfigured(),
+    senderEmail: EMAIL_CONFIG.senderEmail,
+    senderName: EMAIL_CONFIG.senderName,
+    ready: EMAIL_CONFIG.enabled && isMsalConfigured()
+  };
+};
+
+/**
+ * Send a test email to verify the email service is working
+ * @param {string} recipientEmail - Email address to send the test to
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export const sendTestEmail = async (recipientEmail) => {
+  const testContent = `
+        <h2>🎉 Test Email Successful!</h2>
+        <p>This is a test email from <strong>DistributorHub</strong>.</p>
+        <p>If you're receiving this message, your email notifications are configured correctly.</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 16px 0; background: #f8f9fa; border-radius: 8px;">
+            <tr>
+                <td style="padding: 12px;"><strong>Sender:</strong></td>
+                <td style="padding: 12px;">${EMAIL_CONFIG.senderEmail}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px;"><strong>Timestamp:</strong></td>
+                <td style="padding: 12px;">${new Date().toLocaleString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px;"><strong>Status:</strong></td>
+                <td style="padding: 12px;"><span class="status-badge status-success">✓ Working</span></td>
+            </tr>
+        </table>
+        <p style="color: #6c757d; font-size: 14px;">
+            You can now configure notification preferences in Settings.
+        </p>
+    `;
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: 'Test Email - Configuration Verified',
+    body: testContent,
+    importance: 'normal'
+  });
+};
+

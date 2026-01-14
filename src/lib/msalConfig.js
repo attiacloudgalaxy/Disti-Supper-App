@@ -43,9 +43,9 @@ const msalConfig = {
 // Initialize MSAL instance
 export const msalInstance = new PublicClientApplication(msalConfig);
 
-// Login request scopes
+// Login request scopes - includes email sending for notifications
 export const loginRequest = {
-    scopes: ['User.Read', 'openid', 'profile', 'email'],
+    scopes: ['User.Read', 'openid', 'profile', 'email', 'Mail.Send', 'Mail.Send.Shared'],
 };
 
 // Check if MSAL is configured

@@ -16,6 +16,7 @@ import QuoteGeneration from './pages/quote-generation';
 import DealManagement from './pages/deal-management';
 import Profile from './pages/profile';
 import Settings from './pages/settings';
+import DistributorRegistration from './pages/distributor-registration';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -47,6 +48,7 @@ const Routes = () => {
           <RouterRoutes>
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<DistributorRegistration />} />
             <Route
               path="/partner-management"
               element={

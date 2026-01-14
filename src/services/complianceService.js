@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { notifyComplianceDeadline, notifyComplianceViolation, isEmailEnabled } from './emailService';
 
 const convertToSnakeCase = (obj) => {
   return {
@@ -66,6 +67,18 @@ export const complianceService = {
       const { data, error } = await supabase?.from('compliance_requirements')?.insert(requirementData)?.select()?.single();
 
       if (error) throw error;
+
+      // Check if deadline is approaching and send notification (fire-and-forget)
+      if (isEmailEnabled() && data?.due_date) {
+        const daysUntil = Math.ceil((new Date(data.due_date) - new Date()) / (1000 * 60 * 60 * 24));
+        if (daysUntil <= 7 && daysUntil > 0) {
+          notifyComplianceDeadline(
+            { name: data.requirement, deadline: data.due_date, category: data.type },
+            ['admin@distributorhub.com']
+          ).catch(console.error);
+        }
+      }
+
       return { data: data ? convertToCamelCase(data) : null, error: null };
     } catch (error) {
       return { data: null, error };
@@ -76,9 +89,21 @@ export const complianceService = {
     try {
       const requirementData = convertToSnakeCase(requirement);
 
+      // Get old data for comparison
+      const { data: oldData } = await supabase?.from('compliance_requirements')?.select('*')?.eq('id', id)?.single();
+
       const { data, error } = await supabase?.from('compliance_requirements')?.update(requirementData)?.eq('id', id)?.select()?.single();
 
       if (error) throw error;
+
+      // Send notification if status changed to violation (fire-and-forget)
+      if (isEmailEnabled() && data?.status === 'violation' && oldData?.status !== 'violation') {
+        notifyComplianceViolation(
+          { name: data.requirement, category: data.type },
+          ['admin@distributorhub.com']
+        ).catch(console.error);
+      }
+
       return { data: data ? convertToCamelCase(data) : null, error: null };
     } catch (error) {
       return { data: null, error };

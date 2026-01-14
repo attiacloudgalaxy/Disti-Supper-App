@@ -4,8 +4,8 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { getSecurityHeaders } from "./src/utils/securityHeaders";
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  base: "/Disti-Supper-App/",
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? "/Disti-Supper-App/" : "/",
   // This changes the out put dir from dist to build
   // comment this out if that isn't relevant for your project
   build: {
@@ -20,4 +20,4 @@ export default defineConfig({
     allowedHosts: ['.amazonaws.com', '.builtwithrocket.new'],
     headers: getSecurityHeaders(true) // Apply dev-safe security headers
   }
-});
+}));
