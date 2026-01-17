@@ -39,7 +39,7 @@ export default defineConfig({
     },
 
     // Performance
-    pool: 'forks',
+    pool: 'threads',
     fileParallelism: true,
 
     // Watch mode
