@@ -10,3 +10,15 @@ vite.config.*s.*
 .env
 .env.local
 .env.*.local
+.env.test
+
+# Test coverage and reports
+coverage/
+*.lcov
+
+# Test files
+vitest.config.js.timestamp-*
+
+# Logs
+*.log
+npm-debug.log*
