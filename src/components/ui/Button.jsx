@@ -97,6 +97,9 @@ const Button = React.forwardRef(({
             )}
             ref={ref}
             disabled={disabled || loading}
+            tabIndex={disabled || loading ? undefined : 0}
+            aria-disabled={disabled ? 'true' : undefined}
+            aria-busy={loading ? 'true' : undefined}
             {...props}
         >
             {loading && <LoadingSpinner />}
@@ -151,6 +154,9 @@ const Button = React.forwardRef(({
             )}
             ref={ref}
             disabled={disabled || loading}
+            tabIndex={disabled || loading ? undefined : 0}
+            aria-disabled={disabled ? 'true' : undefined}
+            aria-busy={loading ? 'true' : undefined}
             {...props}
         >
             {loading && <LoadingSpinner />}
