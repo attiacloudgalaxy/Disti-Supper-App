@@ -62,12 +62,12 @@ jobs:
         continue-on-error: true  # Don't fail build for moderate vulnerabilities initially
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   # ============================================================================
   # PHASE 3: Test Suite with Matrix
@@ -96,6 +96,9 @@ jobs:
 
       - name: Run Unit Tests
         run: npm run test:run
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Run Coverage Report
         if: matrix.node-version == 20
