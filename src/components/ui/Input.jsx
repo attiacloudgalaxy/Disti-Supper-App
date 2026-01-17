@@ -74,6 +74,8 @@ const Input = React.forwardRef(({
                 )}
                 ref={ref}
                 id={inputId}
+                aria-invalid={error ? 'true' : undefined}
+                aria-disabled={props.disabled ? 'true' : undefined}
                 {...props}
             />
 

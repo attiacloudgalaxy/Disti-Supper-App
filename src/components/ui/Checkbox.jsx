@@ -17,6 +17,21 @@ const Checkbox = React.forwardRef(({
 }, ref) => {
     // Generate unique ID if not provided
     const checkboxId = id || `checkbox-${Math.random()?.toString(36)?.substr(2, 9)}`;
+    // Generate unique label ID for aria-labelledby
+    const labelId = label ? `${checkboxId}-label` : undefined;
+
+    // Internal ref for indeterminate state
+    const internalRef = React.useRef(null);
+    
+    // Combine internal ref with forwarded ref
+    React.useImperativeHandle(ref, () => internalRef.current);
+    
+    // Set indeterminate property on the DOM element
+    React.useEffect(() => {
+        if (internalRef.current) {
+            internalRef.current.indeterminate = indeterminate;
+        }
+    }, [indeterminate]);
 
     // Size variants
     const sizeClasses = {
@@ -30,11 +45,14 @@ const Checkbox = React.forwardRef(({
             <div className="relative flex items-center">
                 <input
                     type="checkbox"
-                    ref={ref}
+                    ref={internalRef}
                     id={checkboxId}
                     checked={checked}
                     disabled={disabled}
                     required={required}
+                    aria-checked={indeterminate ? 'mixed' : checked ? 'true' : 'false'}
+                    aria-disabled={disabled ? 'true' : undefined}
+                    aria-labelledby={labelId}
                     className="sr-only"
                     {...props}
                 />
@@ -62,6 +80,7 @@ const Checkbox = React.forwardRef(({
                 <div className="flex-1 space-y-1">
                     {label && (
                         <label
+                            id={labelId}
                             htmlFor={checkboxId}
                             className={cn(
                                 "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer",
