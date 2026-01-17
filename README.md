@@ -70,10 +70,4 @@ npm run build
 
 See `DEPLOYMENT_GUIDE.md` for full details.
 
-## 🙏 Acknowledgments
 
-- Built with [Rocket.new](https://rocket.new)
-- Powered by React and Vite
-- Styled with Tailwind CSS
-
-Built with ❤️ on Rocket.new
