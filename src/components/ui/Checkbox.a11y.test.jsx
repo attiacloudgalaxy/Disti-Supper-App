@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { axe } from 'vitest-axe'
-import { Checkbox } from './Checkbox'
+import { Checkbox, CheckboxGroup } from './Checkbox'
 
 /**
  * Checkbox Component Accessibility Tests
@@ -45,11 +45,11 @@ describe('Checkbox Component Accessibility', () => {
 
     it('should have no accessibility violations for checkbox group', async () => {
       const { container } = render(
-        <Checkbox.Group label="Select options">
+        <CheckboxGroup label="Select options">
           <Checkbox label="Option 1" value="1" />
           <Checkbox label="Option 2" value="2" />
           <Checkbox label="Option 3" value="3" />
-        </Checkbox.Group>
+        </CheckboxGroup>
       )
       const results = await axe(container)
       expect(results).toHaveNoViolations()
