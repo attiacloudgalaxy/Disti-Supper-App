@@ -164,7 +164,7 @@ jobs:
         continue-on-error: true  # Don't fail build if Lighthouse has issues
 
       - name: Upload Build Artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: build
 
