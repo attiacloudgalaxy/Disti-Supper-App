@@ -1,0 +1,206 @@
+name: PR Preview Deployment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main ]
+
+# Note: GitHub Pages doesn't support multiple preview deployments natively.
+# This workflow demonstrates how to integrate with external preview services.
+# Recommended options:
+#   1. Netlify Deploy Previews (https://www.netlify.com/)
+#   2. Vercel Preview Deployments (https://vercel.com/)
+#   3. Surge.sh (https://surge.sh/)
+#   4. AWS S3 + CloudFront with PR-specific buckets
+
+jobs:
+  # ==============================================================================
+  # BUILD PR PREVIEW
+  # ==============================================================================
+
+  build-preview:
+    name: 🔨 Build PR Preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Preview
+        run: npm run build
+        env:
+          # Use preview/staging environment variables
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
+          VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+          VITE_EMAIL_SENDER: ${{ secrets.VITE_EMAIL_SENDER }}
+          VITE_EMAIL_ENABLED: 'true'
+          VITE_SHOW_DEMO_CREDENTIALS: 'true'  # Show demo credentials in preview
+
+      - name: Fix SPA Routing
+        run: cp build/index.html build/404.html
+
+      - name: Upload Preview Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-build-${{ github.event.pull_request.number }}
+          path: build/
+          retention-days: 7
+
+  # ==============================================================================
+  # DEPLOY TO NETLIFY (RECOMMENDED)
+  # ==============================================================================
+
+  # Uncomment this job to enable Netlify Deploy Previews
+  # Requires: NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID secrets
+  #
+  # deploy-netlify-preview:
+  #   name: 🚀 Deploy to Netlify Preview
+  #   needs: build-preview
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: preview-build-${{ github.event.pull_request.number }}
+  #         path: build
+  #
+  #     - name: Deploy to Netlify
+  #       uses: nwtgck/actions-netlify@v3.0
+  #       with:
+  #         publish-dir: './build'
+  #         production-deploy: false
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         deploy-message: "Deploy from PR #${{ github.event.pull_request.number }}"
+  #         enable-pull-request-comment: true
+  #         enable-commit-comment: false
+  #         overwrites-pull-request-comment: true
+  #       env:
+  #         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+  #         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+  # ==============================================================================
+  # DEPLOY TO VERCEL (ALTERNATIVE)
+  # ==============================================================================
+
+  # Uncomment this job to enable Vercel Preview Deployments
+  # Requires: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets
+  #
+  # deploy-vercel-preview:
+  #   name: 🚀 Deploy to Vercel Preview
+  #   needs: build-preview
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: preview-build-${{ github.event.pull_request.number }}
+  #         path: build
+  #
+  #     - name: Deploy to Vercel
+  #       uses: amondnet/vercel-action@v25
+  #       with:
+  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
+  #         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+  #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+  #         working-directory: ./build
+  #         github-comment: true
+
+  # ==============================================================================
+  # DEPLOY TO SURGE.SH (SIMPLE ALTERNATIVE)
+  # ==============================================================================
+
+  # Uncomment this job to enable Surge.sh Preview Deployments
+  # Requires: SURGE_TOKEN secret
+  #
+  # deploy-surge-preview:
+  #   name: 🚀 Deploy to Surge.sh Preview
+  #   needs: build-preview
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: preview-build-${{ github.event.pull_request.number }}
+  #         path: build
+  #
+  #     - name: Install Surge
+  #       run: npm install -g surge
+  #
+  #     - name: Deploy to Surge
+  #       run: |
+  #         PREVIEW_URL="pr-${{ github.event.pull_request.number }}-distributohub.surge.sh"
+  #         surge ./build $PREVIEW_URL
+  #         echo "Preview URL: https://$PREVIEW_URL"
+  #       env:
+  #         SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+  #
+  #     - name: Comment PR
+  #       uses: actions/github-script@v7
+  #       with:
+  #         script: |
+  #           const previewUrl = `https://pr-${{ github.event.pull_request.number }}-distributohub.surge.sh`;
+  #           github.rest.issues.createComment({
+  #             issue_number: context.issue.number,
+  #             owner: context.repo.owner,
+  #             repo: context.repo.repo,
+  #             body: `🚀 **Preview Deployment Ready!**\n\nPreview URL: ${previewUrl}`
+  #           })
+
+  # ==============================================================================
+  # ADD PR COMMENT (PLACEHOLDER)
+  # ==============================================================================
+
+  comment-preview-info:
+    name: 💬 Comment Preview Info
+    needs: build-preview
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `## 🔍 Preview Build Ready
+
+            ✅ Build completed successfully for PR #${{ github.event.pull_request.number }}
+
+            ### Preview Options
+
+            To enable preview deployments, you can:
+
+            1. **Netlify** (Recommended)
+               - Sign up at https://www.netlify.com/
+               - Add \`NETLIFY_AUTH_TOKEN\` and \`NETLIFY_SITE_ID\` secrets
+               - Uncomment Netlify job in \`.github/workflows/pr-preview.yml\`
+
+            2. **Vercel**
+               - Sign up at https://vercel.com/
+               - Add \`VERCEL_TOKEN\`, \`VERCEL_ORG_ID\`, \`VERCEL_PROJECT_ID\` secrets
+               - Uncomment Vercel job in \`.github/workflows/pr-preview.yml\`
+
+            3. **Surge.sh** (Simplest)
+               - Add \`SURGE_TOKEN\` secret
+               - Uncomment Surge job in \`.github/workflows/pr-preview.yml\`
+
+            ### Build Artifact
+
+            The preview build artifact is available for 7 days and can be downloaded from the workflow run.
+
+            ---
+
+            <sub>💡 Tip: Once configured, preview URLs will appear here automatically!</sub>`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });

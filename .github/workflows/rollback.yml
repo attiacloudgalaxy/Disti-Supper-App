@@ -1,0 +1,185 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Workflow run ID to rollback to (leave empty for previous successful deployment)'
+        required: false
+        type: string
+      confirm:
+        description: 'Type "ROLLBACK" to confirm'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read
+
+jobs:
+  validate:
+    name: ⚠️ Validate Rollback Request
+    runs-on: ubuntu-latest
+    outputs:
+      confirmed: ${{ steps.check.outputs.confirmed }}
+      target_run_id: ${{ steps.find-run.outputs.run_id }}
+    steps:
+      - name: Check Confirmation
+        id: check
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "ROLLBACK" ]; then
+            echo "❌ Rollback not confirmed. You must type 'ROLLBACK' to proceed."
+            exit 1
+          fi
+          echo "confirmed=true" >> $GITHUB_OUTPUT
+          echo "✅ Rollback confirmed by ${{ github.actor }}"
+
+      - name: Find Target Run
+        id: find-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "${{ github.event.inputs.run_id }}" ]; then
+            RUN_ID="${{ github.event.inputs.run_id }}"
+            echo "Using specified run ID: $RUN_ID"
+          else
+            echo "Finding previous successful deployment..."
+            RUN_ID=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/${{ github.repository }}/actions/workflows/deploy.yml/runs?status=success&branch=main&per_page=5" \
+              --jq '.workflow_runs[1].id')
+
+            if [ -z "$RUN_ID" ]; then
+              echo "❌ No previous successful deployment found"
+              exit 1
+            fi
+            echo "Found previous deployment: Run ID $RUN_ID"
+          fi
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+  rollback:
+    name: ⏪ Rollback to Previous Version
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://attiacloudgalaxy.github.io/Disti-Supper-App/
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Previous Artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Downloading artifact from run ${{ needs.validate.outputs.target_run_id }}..."
+
+          # Download the artifact from the specified run
+          gh run download ${{ needs.validate.outputs.target_run_id }} \
+            --name github-pages \
+            --dir ./rollback-artifact
+
+          echo "✅ Artifact downloaded successfully"
+          ls -la ./rollback-artifact/
+
+      - name: Extract Artifact
+        run: |
+          mkdir -p ./build
+          if [ -f "./rollback-artifact/artifact.tar" ]; then
+            tar -xf ./rollback-artifact/artifact.tar -C ./build
+          else
+            echo "❌ Artifact file not found"
+            exit 1
+          fi
+          echo "✅ Artifact extracted"
+          ls -la ./build/
+
+      - name: Upload Rollback Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./build
+
+      - name: Deploy Rollback
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Verify Rollback
+        run: |
+          echo "Waiting for rollback to propagate..."
+          sleep 30
+
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://attiacloudgalaxy.github.io/Disti-Supper-App/)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Rollback verification passed (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "⚠️ Rollback deployed but verification inconclusive"
+
+      - name: Create Rollback Summary
+        if: always()
+        run: |
+          echo "## ⏪ Rollback Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rolled back by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **From run ID**: ${{ needs.validate.outputs.target_run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment URL**: https://attiacloudgalaxy.github.io/Disti-Supper-App/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify the application is functioning correctly" >> $GITHUB_STEP_SUMMARY
+          echo "2. Investigate the issue that caused the rollback" >> $GITHUB_STEP_SUMMARY
+          echo "3. Fix the issue before deploying again" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: 📢 Notify Rollback
+    needs: [validate, rollback]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create Rollback Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ needs.rollback.result }}' === 'success' ? '✅ Successful' : '❌ Failed';
+
+            const body = `## ⏪ Production Rollback ${status}
+
+            ### Rollback Details
+
+            - **Triggered by**: @${{ github.actor }}
+            - **Target run**: [${{ needs.validate.outputs.target_run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ needs.validate.outputs.target_run_id }})
+            - **Rollback run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - **Timestamp**: ${new Date().toISOString()}
+            - **Status**: ${status}
+
+            ### Action Items
+
+            - [ ] Verify application functionality
+            - [ ] Identify root cause of the issue
+            - [ ] Create fix for the issue
+            - [ ] Test fix thoroughly before redeployment
+
+            ### Important Notes
+
+            ⚠️ **This is a production rollback.** Please investigate the issue that caused this rollback before attempting to redeploy.
+
+            ---
+
+            cc: @${{ github.repository_owner }}`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[ROLLBACK] Production rollback on ${new Date().toISOString().split('T')[0]}`,
+              body: body,
+              labels: ['rollback', 'production', 'incident']
+            });
