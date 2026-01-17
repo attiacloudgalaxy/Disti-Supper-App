@@ -1,0 +1,114 @@
+# CODEOWNERS - Code Review Assignments
+# This file defines code ownership and automatically requests reviews from the specified users/teams
+# when a pull request modifies files in the specified directories.
+#
+# Order matters! Later matches take precedence over earlier ones.
+
+# ==============================================================================
+# DEFAULT OWNERS
+# ==============================================================================
+
+# Default owner for everything in the repo
+# All PRs will require review from this user unless a more specific rule applies
+* @attiacloudgalaxy
+
+# ==============================================================================
+# FRONTEND CODE
+# ==============================================================================
+
+# React components - UI/UX team
+/src/components/ @attiacloudgalaxy
+/src/pages/ @attiacloudgalaxy
+
+# Styling and theme
+/src/styles/ @attiacloudgalaxy
+*.css @attiacloudgalaxy
+tailwind.config.js @attiacloudgalaxy
+
+# ==============================================================================
+# BACKEND & SERVICES
+# ==============================================================================
+
+# Service layer - Backend team
+/src/services/ @attiacloudgalaxy
+/src/lib/ @attiacloudgalaxy
+/src/utils/ @attiacloudgalaxy
+
+# State management - Requires senior review
+/src/store/ @attiacloudgalaxy
+/src/contexts/ @attiacloudgalaxy
+
+# ==============================================================================
+# SECURITY-SENSITIVE FILES
+# ==============================================================================
+
+# Authentication & Security - Requires security team review
+/src/lib/supabase.js @attiacloudgalaxy
+/src/lib/msalConfig.js @attiacloudgalaxy
+/src/services/authService.js @attiacloudgalaxy
+/src/contexts/AuthContext.jsx @attiacloudgalaxy
+/src/services/emailService.js @attiacloudgalaxy
+
+# ==============================================================================
+# DATABASE & MIGRATIONS
+# ==============================================================================
+
+# Supabase migrations - DBA approval required
+/supabase/migrations/ @attiacloudgalaxy
+/supabase/config.toml @attiacloudgalaxy
+
+# ==============================================================================
+# CI/CD & INFRASTRUCTURE
+# ==============================================================================
+
+# GitHub Actions workflows - DevOps team
+/.github/workflows/ @attiacloudgalaxy
+/.github/CODEOWNERS @attiacloudgalaxy
+/.github/dependabot.yml @attiacloudgalaxy
+/.github/SECRETS.md @attiacloudgalaxy
+
+# Build configuration
+vite.config.mjs @attiacloudgalaxy
+package.json @attiacloudgalaxy
+package-lock.json @attiacloudgalaxy
+
+# ==============================================================================
+# TESTING
+# ==============================================================================
+
+# Test files - QA team
+**/*.test.js @attiacloudgalaxy
+**/*.test.jsx @attiacloudgalaxy
+**/*.spec.js @attiacloudgalaxy
+**/*.spec.jsx @attiacloudgalaxy
+/src/test-utils/ @attiacloudgalaxy
+/src/__mocks__/ @attiacloudgalaxy
+vitest.config.js @attiacloudgalaxy
+vitest.setup.js @attiacloudgalaxy
+
+# Chaos engineering tests
+/Chaos/ @attiacloudgalaxy
+
+# ==============================================================================
+# DOCUMENTATION
+# ==============================================================================
+
+# Documentation - Tech writing team
+*.md @attiacloudgalaxy
+/docs/ @attiacloudgalaxy
+README.md @attiacloudgalaxy
+CLAUDE.md @attiacloudgalaxy
+
+# ==============================================================================
+# CONFIGURATION FILES
+# ==============================================================================
+
+# Environment files - Platform team
+.env.example @attiacloudgalaxy
+.env.production @attiacloudgalaxy
+.gitignore @attiacloudgalaxy
+
+# Linting and code quality
+.eslintrc.js @attiacloudgalaxy
+.prettierrc @attiacloudgalaxy
+lighthouserc.json @attiacloudgalaxy

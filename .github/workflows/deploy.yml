@@ -1,20 +1,28 @@
 name: Deploy DistributorHub
+
 on:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
 
 permissions:
   contents: read
   pages: write
   id-token: write
+  security-events: write  # For CodeQL
 
 concurrency:
-  group: "pages"
+  group: "pages-${{ github.ref }}"
   cancel-in-progress: false
 
 jobs:
-  test:
-    name: 🧪 Quality Assurance
+  # ============================================================================
+  # PHASE 1 & 2: Code Quality & Security
+  # ============================================================================
+
+  lint:
+    name: 🔍 Code Quality
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,8 +34,72 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run Linter
+        run: npm run lint
+        continue-on-error: true  # Don't fail the build for linting issues initially
+
+  security:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true  # Don't fail build for moderate vulnerabilities initially
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # ============================================================================
+  # PHASE 3: Test Suite with Matrix
+  # ============================================================================
+
+  test:
+    name: 🧪 Test Suite (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    needs: [lint, security]
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+      fail-fast: false  # Run all matrix jobs even if one fails
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
       - name: Install Root Dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Run Unit Tests
+        run: npm run test:run
+
+      - name: Run Coverage Report
+        if: matrix.node-version == 20
+        run: npm run test:coverage
 
       - name: Install Chaos Dependencies
         run: |
@@ -39,8 +111,12 @@ jobs:
           cd Chaos
           npm run test:edge-cases
 
+  # ============================================================================
+  # PHASE 3: Build & Quality Audit
+  # ============================================================================
+
   build:
-    name: 📦 Build Application
+    name: 📦 Build & Audit
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -61,26 +137,101 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_SHOW_DEMO_CREDENTIALS: ${{ secrets.VITE_SHOW_DEMO_CREDENTIALS }}
           VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
           VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+          VITE_EMAIL_SENDER: ${{ secrets.VITE_EMAIL_SENDER }}
+          VITE_EMAIL_ENABLED: 'true'
+          VITE_SHOW_DEMO_CREDENTIALS: 'false'
 
       - name: Fix SPA Routing for GitHub Pages
         run: cp build/index.html build/404.html
 
-      - name: Upload artifact
+      - name: 📊 Bundle Size Report
+        run: |
+          echo "## Bundle Size Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          du -sh build/ >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Asset breakdown:" >> $GITHUB_STEP_SUMMARY
+          du -sh build/assets/* >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: './lighthouserc.json'
+          uploadArtifacts: true
+        continue-on-error: true  # Don't fail build if Lighthouse has issues
+
+      - name: Upload Build Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: build
 
+  # ============================================================================
+  # PHASE 1: Deploy to Production
+  # ============================================================================
+
   deploy:
-    name: 🚀 Deploy to GitHub Pages
+    name: 🚀 Deploy Production
     needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
+      name: production
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # ============================================================================
+  # PHASE 3: Post-Deployment Verification
+  # ============================================================================
+
+  verify:
+    name: ✅ Verify Deployment
+    needs: deploy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health Check
+        run: |
+          echo "Waiting for deployment to propagate..."
+          sleep 30
+
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://attiacloudgalaxy.github.io/Disti-Supper-App/)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Health check passed (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "❌ Health check failed after 5 attempts"
+          exit 1
+
+      - name: Smoke Test
+        run: |
+          echo "Running smoke tests on deployed application..."
+          RESPONSE=$(curl -sf https://attiacloudgalaxy.github.io/Disti-Supper-App/ || echo "FAILED")
+
+          if echo "$RESPONSE" | grep -q "DistributorHub"; then
+            echo "✅ Application title found"
+          else
+            echo "❌ Application title not found"
+            exit 1
+          fi
+
+      - name: Create Deployment Summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://attiacloudgalaxy.github.io/Disti-Supper-App/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
