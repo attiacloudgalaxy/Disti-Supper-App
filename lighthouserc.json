@@ -5,26 +5,32 @@
       "url": [
         "/",
         "/login",
-        "/dashboard",
-        "/partners",
-        "/deals",
-        "/products"
+        "/executive-dashboard",
+        "/deal-management",
+        "/partner-management",
+        "/inventory-management",
+        "/compliance-tracking",
+        "/analytics-and-reporting",
+        "/partner-portal",
+        "/quote-generation"
       ],
-      "numberOfRuns": 3
+      "numberOfRuns": 5
     },
     "assert": {
       "preset": "lighthouse:recommended",
       "assertions": {
-        "categories:performance": ["error", { "minScore": 0.75 }],
-        "categories:accessibility": ["error", { "minScore": 0.9 }],
-        "categories:best-practices": ["error", { "minScore": 0.85 }],
-        "categories:seo": ["warn", { "minScore": 0.8 }],
+        "categories:performance": ["error", { "minScore": 0.85 }],
+        "categories:accessibility": ["error", { "minScore": 0.95 }],
+        "categories:best-practices": ["error", { "minScore": 0.90 }],
+        "categories:seo": ["warn", { "minScore": 0.85 }],
         "categories:pwa": "off",
 
-        "first-contentful-paint": ["warn", { "maxNumericValue": 3000 }],
-        "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-        "cumulative-layout-shift": ["warn", { "maxNumericValue": 0.1 }],
-        "total-blocking-time": ["warn", { "maxNumericValue": 500 }],
+        "first-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+        "largest-contentful-paint": ["error", { "maxNumericValue": 4000 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.25 }],
+        "total-blocking-time": ["error", { "maxNumericValue": 600 }],
+        "speed-index": ["warn", { "maxNumericValue": 4000 }],
+        "interactive": ["warn", { "maxNumericValue": 5000 }],
 
         "uses-responsive-images": "warn",
         "offscreen-images": "warn",
@@ -36,12 +42,22 @@
         "uses-optimized-images": "warn",
         "uses-text-compression": "error",
         "uses-long-cache-ttl": "warn",
+        "efficient-animated-content": "warn",
+        "duplicated-javascript": "warn",
+        "legacy-javascript": "warn",
 
         "color-contrast": "error",
         "image-alt": "error",
         "label": "error",
         "valid-lang": "error",
-        "meta-viewport": "error"
+        "meta-viewport": "error",
+        "aria-allowed-attr": "error",
+        "aria-required-attr": "error",
+        "aria-valid-attr": "error",
+        "button-name": "error",
+        "document-title": "error",
+        "html-has-lang": "error",
+        "link-name": "error"
       }
     },
     "upload": {

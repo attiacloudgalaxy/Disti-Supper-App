@@ -1,0 +1,103 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC
+  workflow_dispatch:  # Allow manual trigger
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+
+jobs:
+  dependency-scan:
+    name: 🔒 Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: npm audit (Full)
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Generate Audit Report
+        run: |
+          npm audit --json > audit-report.json || true
+          echo "## Security Audit Report" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat audit-report.json | jq '.metadata' >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Audit Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-report
+          path: audit-report.json
+          retention-days: 30
+
+  secrets-scan:
+    name: 🔐 Secrets Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comprehensive scan
+
+      - name: Scan for Secrets
+        run: |
+          echo "Scanning for exposed secrets..."
+          # Basic pattern matching for common secrets
+          if grep -r -E "(password|secret|key|token)\s*=\s*['\"][^'\"]{8,}" src/ --exclude-dir=node_modules || true; then
+            echo "⚠️ Potential secrets found in code"
+          else
+            echo "✅ No obvious secrets detected"
+          fi
+
+      - name: Create Security Summary
+        run: |
+          echo "## Secrets Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Scan Date**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+  license-check:
+    name: 📜 License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Check Licenses
+        run: |
+          npx license-checker --summary
+          npx license-checker --json > licenses.json
+
+      - name: Upload License Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: licenses.json
+          retention-days: 30

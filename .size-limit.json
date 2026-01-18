@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Main JavaScript Bundle",
+    "path": "build/assets/index-*.js",
+    "limit": "500 KB",
+    "gzip": true
+  },
+  {
+    "name": "Main CSS Bundle",
+    "path": "build/assets/index-*.css",
+    "limit": "50 KB",
+    "gzip": true
+  },
+  {
+    "name": "Vendor Bundle",
+    "path": "build/assets/vendor-*.js",
+    "limit": "300 KB",
+    "gzip": true
+  },
+  {
+    "name": "Total Bundle Size",
+    "path": "build/assets/*.{js,css}",
+    "limit": "800 KB",
+    "gzip": true
+  }
+]
