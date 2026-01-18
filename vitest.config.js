@@ -6,8 +6,8 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
-    // Environment
-    environment: 'jsdom',
+    // Environment - using happy-dom for better ESM compatibility
+    environment: 'happy-dom',
     globals: true,
 
     // Setup
@@ -38,8 +38,8 @@ export default defineConfig({
       }
     },
 
-    // Performance
-    pool: 'forks',
+    // Performance - using threads pool for better compatibility
+    pool: 'threads',
     fileParallelism: true,
 
     // Watch mode
