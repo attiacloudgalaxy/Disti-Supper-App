@@ -10,6 +10,7 @@ module.exports = {
     'plugin:react/recommended',
     'plugin:react/jsx-runtime',
     'plugin:react-hooks/recommended',
+    'plugin:security/recommended',
   ],
   parserOptions: {
     ecmaVersion: 'latest',
@@ -23,7 +24,7 @@ module.exports = {
       version: '18.2',
     },
   },
-  plugins: ['react-refresh'],
+  plugins: ['react-refresh', 'security'],
   rules: {
     // React Refresh
     'react-refresh/only-export-components': [
@@ -40,6 +41,15 @@ module.exports = {
     'no-console': ['warn', { allow: ['warn', 'error'] }],
     'prefer-const': 'warn',
     'no-var': 'error',
+
+    // Security rules
+    'security/detect-object-injection': 'warn',
+    'security/detect-non-literal-regexp': 'warn',
+    'security/detect-unsafe-regex': 'error',
+    'security/detect-buffer-noassert': 'error',
+    'security/detect-eval-with-expression': 'error',
+    'security/detect-no-csrf-before-method-override': 'warn',
+    'security/detect-possible-timing-attacks': 'warn',
   },
   ignorePatterns: [
     'dist',

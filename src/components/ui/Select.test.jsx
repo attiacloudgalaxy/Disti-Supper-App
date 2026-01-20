@@ -1,7 +1,14 @@
+import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Select from './Select'
+
+// Helper to get dropdown options container
+const getDropdownOptions = () => {
+  const dropdown = document.querySelector('[class*="absolute z-50"]')
+  return dropdown ? within(dropdown) : null
+}
 
 /**
  * Select Component Tests
@@ -93,12 +100,14 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    expect(screen.getByText('Option 1')).toBeInTheDocument()
+    // Dropdown should be open
+    expect(getDropdownOptions()).not.toBeNull()
     
     await user.click(screen.getByTestId('outside'))
     
     await waitFor(() => {
-      expect(screen.queryByText('Option 1')).not.toBeInTheDocument()
+      // Dropdown should be closed
+      expect(getDropdownOptions()).toBeNull()
     })
   })
 
@@ -133,11 +142,13 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    const option = screen.getByText('Option 1')
+    const dropdown = getDropdownOptions()
+    const option = dropdown.getByText('Option 1')
     await user.click(option)
     
     await waitFor(() => {
-      expect(screen.queryByText('Option 2')).not.toBeInTheDocument()
+      // Dropdown should be closed
+      expect(getDropdownOptions()).toBeNull()
     })
   })
 
@@ -154,7 +165,8 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    expect(screen.queryByText('Option 1')).not.toBeInTheDocument()
+    // Dropdown should not open
+    expect(getDropdownOptions()).toBeNull()
   })
 
   it('shows loading spinner when loading prop is true', () => {
@@ -181,8 +193,9 @@ describe('Select Component', () => {
       />
     )
     
-    const button = screen.getByRole('button')
-    const clearButton = button.querySelector('button')
+    // Get the main select button (the one with aria-haspopup)
+    const selectButton = screen.getByRole('button', { name: /option 1/i })
+    const clearButton = selectButton.querySelector('button')
     await user.click(clearButton)
     
     expect(handleChange).toHaveBeenCalledWith('')
@@ -208,9 +221,11 @@ describe('Select Component', () => {
     const searchInput = screen.getByPlaceholderText('Search options...')
     await user.type(searchInput, '2')
     
-    expect(screen.queryByText('Option 1')).not.toBeInTheDocument()
-    expect(screen.getByText('Option 2')).toBeInTheDocument()
-    expect(screen.queryByText('Option 3')).not.toBeInTheDocument()
+    // Check within the dropdown only (not the hidden native select)
+    const dropdown = getDropdownOptions()
+    expect(dropdown.queryByText('Option 1')).not.toBeInTheDocument()
+    expect(dropdown.getByText('Option 2')).toBeInTheDocument()
+    expect(dropdown.queryByText('Option 3')).not.toBeInTheDocument()
   })
 
   it('shows "No options found" when search has no results', async () => {
@@ -239,22 +254,34 @@ describe('Select Component', () => {
   it('handles multiple selection', async () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
-    render(
-      <Select
-        options={defaultOptions}
-        multiple
-        onChange={handleChange}
-      />
-    )
+    
+    // Use a controlled component wrapper to properly test multiple selection
+    const ControlledSelect = () => {
+      const [value, setValue] = React.useState([])
+      return (
+        <Select
+          options={defaultOptions}
+          multiple
+          value={value}
+          onChange={(newValue) => {
+            setValue(newValue)
+            handleChange(newValue)
+          }}
+        />
+      )
+    }
+    
+    render(<ControlledSelect />)
     
     const button = screen.getByRole('button')
     await user.click(button)
     
-    const option1 = screen.getByText('Option 1')
+    const dropdown = getDropdownOptions()
+    const option1 = dropdown.getByText('Option 1')
     await user.click(option1)
     expect(handleChange).toHaveBeenCalledWith(['option1'])
     
-    const option2 = screen.getByText('Option 2')
+    const option2 = dropdown.getByText('Option 2')
     await user.click(option2)
     expect(handleChange).toHaveBeenCalledWith(['option1', 'option2'])
   })
@@ -283,10 +310,11 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    const option1 = screen.getByText('Option 1')
+    const dropdown = getDropdownOptions()
+    const option1 = dropdown.getByText('Option 1')
     expect(option1.parentElement.querySelector('svg')).toBeInTheDocument()
     
-    const option2 = screen.getByText('Option 2')
+    const option2 = dropdown.getByText('Option 2')
     expect(option2.parentElement.querySelector('svg')).toBeNull()
   })
 
@@ -305,7 +333,8 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    const option1 = screen.getByText('Option 1')
+    const dropdown = getDropdownOptions()
+    const option1 = dropdown.getByText('Option 1')
     await user.click(option1)
     
     expect(handleChange).toHaveBeenCalledWith(['option2'])
@@ -318,10 +347,12 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    const option1 = screen.getByText('Option 1')
+    const dropdown = getDropdownOptions()
+    const option1 = dropdown.getByText('Option 1')
     await user.click(option1)
     
-    expect(screen.getByText('Option 2')).toBeInTheDocument()
+    // Dropdown should still be open
+    expect(dropdown.getByText('Option 2')).toBeInTheDocument()
   })
 
   it('disables individual options', async () => {
@@ -336,7 +367,8 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    const option1 = screen.getByText('Option 1')
+    const dropdown = getDropdownOptions()
+    const option1 = dropdown.getByText('Option 1')
     await user.click(option1)
     
     expect(handleChange).not.toHaveBeenCalled()
@@ -344,8 +376,10 @@ describe('Select Component', () => {
 
   it('applies custom className', () => {
     render(<Select options={defaultOptions} className="custom-select" />)
-    const wrapper = screen.getByRole('button').parentElement
-    expect(wrapper).toHaveClass('custom-select')
+    // The className is applied to the outermost wrapper div
+    const button = screen.getByRole('button')
+    const wrapper = button.closest('.custom-select')
+    expect(wrapper).toBeInTheDocument()
   })
 
   it('generates unique ID when not provided', () => {
@@ -391,7 +425,8 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    const option = screen.getByText('Option 1')
+    const dropdown = getDropdownOptions()
+    const option = dropdown.getByText('Option 1')
     await user.click(option)
     
     expect(handleOpenChange).toHaveBeenCalledWith(false)
