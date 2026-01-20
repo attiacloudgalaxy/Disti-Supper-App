@@ -6,12 +6,14 @@ import { server } from './src/__mocks__/server'
 
 // Mock MSAL browser to prevent crypto errors in Node.js environment
 vi.mock('@azure/msal-browser', () => ({
-  PublicClientApplication: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockResolvedValue(undefined),
-    getAllAccounts: vi.fn().mockReturnValue([]),
-    acquireTokenSilent: vi.fn().mockResolvedValue({ accessToken: 'mock-token' }),
-    acquireTokenPopup: vi.fn().mockResolvedValue({ accessToken: 'mock-token' }),
-  })),
+  PublicClientApplication: vi.fn(function () {
+    this.initialize = vi.fn().mockResolvedValue(undefined);
+    this.getAllAccounts = vi.fn().mockReturnValue([]);
+    this.acquireTokenSilent = vi.fn().mockResolvedValue({ accessToken: 'mock-token' });
+    this.acquireTokenPopup = vi.fn().mockResolvedValue({ accessToken: 'mock-token' });
+    this.loginPopup = vi.fn().mockResolvedValue({ accessToken: 'mock-token' });
+    this.logout = vi.fn().mockResolvedValue(undefined);
+  }),
 }))
 
 // Extend expect with DOM matchers
