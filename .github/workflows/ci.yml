@@ -182,7 +182,7 @@ jobs:
 
       - name: Upload Test Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-results-${{ matrix.browser }}
           path: playwright-report/
@@ -214,7 +214,7 @@ jobs:
 
       - name: Upload A11y Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: a11y-report
           path: playwright-report/
