@@ -50,7 +50,7 @@ jobs:
         run: cp build/index.html build/404.html
 
       - name: Upload Preview Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: preview-build-${{ github.event.pull_request.number }}
           path: build/
