@@ -1,11 +1,12 @@
 import React from 'react';
+import logo from '../../../assets/logo.png';
 
 const BrandingHeader = () => {
   return (
     <div className="text-center mb-8">
       <div className="flex justify-center mb-6">
         <img
-          src="/src/assets/logo.png"
+          src={logo}
           alt="Ultimate Distribution Company"
           className="w-auto h-24 object-contain"
         />

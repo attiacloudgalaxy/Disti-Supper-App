@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
+import logo from '../../assets/logo.png';
 
 const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse }) => {
   const location = useLocation();
@@ -107,7 +108,7 @@ const NavigationSidebar = ({ isCollapsed = false, onToggleCollapse }) => {
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <img
-              src="/src/assets/logo.png"
+              src={logo}
               alt="Logo"
               className="w-10 h-10 object-contain"
             />

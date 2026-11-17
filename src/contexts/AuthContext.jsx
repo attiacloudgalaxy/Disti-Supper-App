@@ -3,6 +3,20 @@ import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({})
 
+// Derive a display profile from auth metadata when no user_profiles row exists.
+const buildFallbackProfile = (authUser) => {
+  const meta = authUser?.user_metadata ?? {}
+  return {
+    id: authUser?.id,
+    email: authUser?.email ?? '',
+    full_name: meta.full_name || authUser?.email?.split('@')?.[0] || 'User',
+    role: meta.role || 'staff',
+    avatar_url: meta.avatar_url || null,
+    phone: null,
+    isFallback: true
+  }
+}
+
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
@@ -19,12 +33,16 @@ export const AuthProvider = ({ children }) => {
 
   // Isolated async operations - never called from auth callbacks
   const profileOperations = {
-    async load(userId) {
+    async load(authUser) {
+      const userId = authUser?.id
       if (!userId) return
       setProfileLoading(true)
       try {
-        const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).single()
-        if (!error) setUserProfile(data)
+        // maybeSingle(): a missing profile row is expected (e.g. users created
+        // before the handle_new_user trigger) and must not surface as a 406.
+        const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle()
+        if (error) return
+        setUserProfile(data ?? buildFallbackProfile(authUser))
       } catch (error) {
         console.error('Profile load error:', error)
       } finally {
@@ -46,7 +64,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false)
 
       if (session?.user) {
-        profileOperations?.load(session?.user?.id) // Fire-and-forget
+        profileOperations?.load(session?.user) // Fire-and-forget
       } else {
         profileOperations?.clear()
       }
