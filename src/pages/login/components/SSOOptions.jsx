@@ -13,17 +13,10 @@ const SSOOptions = () => {
   // Check if MSAL is configured
   const msalConfigured = isMsalConfigured();
 
-  // Only call useMsal hook if Azure AD is configured
-  // The hook is safe to call unconditionally since App.jsx wraps with MsalProvider when configured
-  let instance = null;
-  try {
-    if (msalConfigured) {
-      const msal = useMsal();
-      instance = msal.instance;
-    }
-  } catch (e) {
-    // MsalProvider not available - this is expected when Azure AD is not configured
-  }
+  // useMsal() falls back to a stubbed context when no MsalProvider is mounted,
+  // so it is safe to call unconditionally; only use the instance when configured.
+  const { instance: msalInstance } = useMsal();
+  const instance = msalConfigured ? msalInstance : null;
 
   const handleMicrosoftLogin = useCallback(async () => {
     setLoading('microsoft');

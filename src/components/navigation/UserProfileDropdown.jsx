@@ -11,7 +11,7 @@ const UserProfileDropdown = ({ user: propUser }) => {
   const { user, userProfile, signOut } = useAuth();
 
   const currentUser = {
-    name: userProfile?.full_name || user?.email?.split('@')?.[0] || 'User',
+    name: propUser?.name || userProfile?.full_name || user?.email?.split('@')?.[0] || 'User',
     email: user?.email || 'user@example.com',
     role: userProfile?.role || 'User',
     avatar: userProfile?.avatar_url || propUser?.avatar || null

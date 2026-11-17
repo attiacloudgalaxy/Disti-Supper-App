@@ -3,7 +3,7 @@ import { BrowserRouter, Routes as RouterRoutes, Route, Navigate } from "react-ro
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import { AuthProvider } from "./contexts/AuthContext";
-import { useAuth } from "./contexts/useAuth";
+import { useAuth } from "./contexts/AuthContext";
 import NotFound from "pages/NotFound";
 import PartnerManagement from './pages/partner-management';
 import InventoryManagement from './pages/inventory-management';
@@ -41,7 +41,7 @@ const ProtectedRoute = ({ children }) => {
 
 const Routes = () => {
   return (
-    <BrowserRouter basename="/Disti-Supper-App">
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AuthProvider>
         <ErrorBoundary>
           <ScrollToTop />

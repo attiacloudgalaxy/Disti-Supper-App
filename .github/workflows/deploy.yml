@@ -79,7 +79,7 @@ jobs:
     needs: [lint, security]
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22]  # Node 18 is EOL and unsupported by vitest 4
       fail-fast: false  # Run all matrix jobs even if one fails
     steps:
       - name: Checkout

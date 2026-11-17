@@ -38,7 +38,7 @@ const ComplianceTracking = () => {
 
   const loadCompliance = async () => {
     setLoading(true);
-    const { data, error } = await complianceService?.getAll();
+    const { data, error } = await complianceService.getAll();
     if (error) {
       setError(error?.message || 'Failed to load compliance data');
     } else {

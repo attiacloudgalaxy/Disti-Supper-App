@@ -40,7 +40,7 @@ describe('Select Component', () => {
         label="Select an option"
       />
     )
-    expect(screen.getByText('Select an option')).toBeInTheDocument()
+    expect(screen.getByLabelText('Select an option')).toBeInTheDocument()
   })
 
   it('renders with description', () => {
@@ -83,9 +83,11 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    expect(screen.getByText('Option 1')).toBeInTheDocument()
-    expect(screen.getByText('Option 2')).toBeInTheDocument()
-    expect(screen.getByText('Option 3')).toBeInTheDocument()
+    const dropdown = getDropdownOptions()
+    expect(dropdown).not.toBeNull()
+    expect(dropdown.getByText('Option 1')).toBeInTheDocument()
+    expect(dropdown.getByText('Option 2')).toBeInTheDocument()
+    expect(dropdown.getByText('Option 3')).toBeInTheDocument()
   })
 
   it('closes dropdown when clicking outside', async () => {
@@ -119,7 +121,7 @@ describe('Select Component', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     
-    const option = screen.getByText('Option 2')
+    const option = getDropdownOptions().getByText('Option 2')
     await user.click(option)
     
     expect(handleChange).toHaveBeenCalledWith('option2')
@@ -127,12 +129,12 @@ describe('Select Component', () => {
 
   it('displays selected option', () => {
     render(<Select options={defaultOptions} value="option2" />)
-    expect(screen.getByText('Option 2')).toBeInTheDocument()
+    expect(screen.getByRole('button')).toHaveTextContent('Option 2')
   })
 
   it('displays placeholder when no value is selected', () => {
     render(<Select options={defaultOptions} placeholder="Select..." />)
-    expect(screen.getByText('Select...')).toBeInTheDocument()
+    expect(screen.getByRole('button')).toHaveTextContent('Select...')
   })
 
   it('closes dropdown after selecting an option', async () => {
@@ -177,7 +179,7 @@ describe('Select Component', () => {
 
   it('shows clear button when clearable and has value', () => {
     render(<Select options={defaultOptions} value="option1" clearable />)
-    const button = screen.getByRole('button')
+    const button = screen.getByRole('button', { name: /option 1/i })
     expect(button.querySelector('button')).toBeInTheDocument()
   })
 

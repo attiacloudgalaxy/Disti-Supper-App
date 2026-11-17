@@ -64,7 +64,7 @@ const SuccessMessage = ({ partnerData, onRegisterAnother }) => {
                         <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                             <span className="text-xs font-bold text-primary">2</span>
                         </div>
-                        <p className="text-muted-foreground">You'll receive an email confirmation</p>
+                        <p className="text-muted-foreground">You&apos;ll receive an email confirmation</p>
                     </div>
                     <div className="flex items-start gap-3">
                         <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">

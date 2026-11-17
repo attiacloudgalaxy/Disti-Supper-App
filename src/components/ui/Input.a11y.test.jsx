@@ -66,7 +66,7 @@ describe('Input Component Accessibility', () => {
     it('should have no accessibility violations with helper text', async () => {
       const { container } = render(
         <div>
-          <Input id="email" type="email" aria-describedby="email-helper" />
+          <Input id="email" type="email" aria-label="Email" aria-describedby="email-helper" />
           <p id="email-helper">Enter your email address</p>
         </div>
       )

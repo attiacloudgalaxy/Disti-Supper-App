@@ -49,7 +49,7 @@ export const checkDuplicatePartner = async ({ email, companyName, phone }) => {
         // Check by phone (if provided and not empty)
         if (phone?.trim()) {
             // Normalize phone for comparison (remove spaces, dashes, parentheses)
-            const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+            const normalizedPhone = phone.replace(/[\s\-()]/g, '');
             const { data: phoneMatch } = await supabase
                 .from('partners')
                 .select('id, company_name, phone')
@@ -57,7 +57,7 @@ export const checkDuplicatePartner = async ({ email, companyName, phone }) => {
 
             // Manual check for phone matches (with normalization)
             const matchingPhone = phoneMatch?.find(p =>
-                p.phone?.replace(/[\s\-\(\)]/g, '') === normalizedPhone
+                p.phone?.replace(/[\s\-()]/g, '') === normalizedPhone
             );
 
             if (matchingPhone) {

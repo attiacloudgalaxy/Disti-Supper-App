@@ -63,7 +63,7 @@ export const createAuditLog = async ({
         // Get current user if not provided
         let effectiveUserId = userId;
         if (!effectiveUserId) {
-            const { data: { user } } = await supabase?.auth?.getUser();
+            const { data: { user } } = await supabase.auth.getUser();
             effectiveUserId = user?.id;
         }
 
@@ -83,10 +83,10 @@ export const createAuditLog = async ({
         // Try to insert into audit_logs table
         // Note: This table needs to be created in Supabase
         const { data, error } = await supabase
-            ?.from('audit_logs')
-            ?.insert(auditEntry)
-            ?.select()
-            ?.single();
+            .from('audit_logs')
+            .insert(auditEntry)
+            .select()
+            .single();
 
         if (error) {
             // If table doesn't exist, log to console in development

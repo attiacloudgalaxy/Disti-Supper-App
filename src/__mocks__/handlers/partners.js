@@ -51,7 +51,6 @@ export const partnerHandlers = [
   // GET /rest/v1/partners - Get all partners
   http.get('*/rest/v1/partners', ({ request }) => {
     const url = new URL(request.url)
-    const select = url.searchParams.get('select')
     const status = url.searchParams.get('status')
     const tier = url.searchParams.get('tier')
     
@@ -72,7 +71,6 @@ export const partnerHandlers = [
   http.get('*/rest/v1/partners', ({ request }) => {
     const url = new URL(request.url)
     const id = url.searchParams.get('id')
-    const single = url.searchParams.get('single')
     
     if (id) {
       const partner = mockPartners.find(p => p.id === id.replace('eq.', ''))

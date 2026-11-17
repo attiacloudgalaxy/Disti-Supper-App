@@ -35,7 +35,7 @@ const CookieConsent = () => {
                     <h3 className="text-lg font-semibold mb-1">We value your privacy</h3>
                     <p className="text-sm text-muted-foreground">
                         We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic.
-                        By clicking "Accept All", you consent to our use of cookies.
+                        By clicking &quot;Accept All&quot;, you consent to our use of cookies.
                     </p>
                 </div>
                 <div className="flex items-center gap-3">

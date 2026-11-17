@@ -7,7 +7,6 @@ import QuickActionToolbar from '../../components/navigation/QuickActionToolbar';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Image from '../../components/AppImage';
-import Input from '../../components/ui/Input';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Profile = () => {

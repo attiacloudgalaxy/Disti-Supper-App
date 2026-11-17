@@ -10,7 +10,7 @@ module.exports = {
     'plugin:react/recommended',
     'plugin:react/jsx-runtime',
     'plugin:react-hooks/recommended',
-    'plugin:security/recommended',
+    'plugin:security/recommended-legacy',
   ],
   parserOptions: {
     ecmaVersion: 'latest',
@@ -37,7 +37,9 @@ module.exports = {
     'react/react-in-jsx-scope': 'off', // Not needed in React 18+
 
     // General JavaScript
-    'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    // `React` is ignored because the automatic JSX runtime makes the import optional;
+    // unused args are ignored because handler signatures are dictated by the caller.
+    'no-unused-vars': ['warn', { args: 'none', varsIgnorePattern: '^_|^React$', ignoreRestSiblings: true }],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
     'prefer-const': 'warn',
     'no-var': 'error',

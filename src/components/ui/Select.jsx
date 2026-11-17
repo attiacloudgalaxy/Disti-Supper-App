@@ -1,5 +1,5 @@
 // components/ui/Select.jsx - Shadcn style Select
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check, Search, X } from "lucide-react";
 import { cn } from "../../utils/cn";
 import Button from "./Button";
@@ -28,6 +28,22 @@ const Select = React.forwardRef(({
 }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleClickOutside = (event) => {
+            if (containerRef.current && !containerRef.current.contains(event.target)) {
+                setIsOpen(false);
+                setSearchTerm("");
+                onOpenChange?.(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen, onOpenChange]);
 
     // Generate unique ID if not provided
     const selectId = id || `select-${Math.random()?.toString(36)?.substr(2, 9)}`;
@@ -99,7 +115,7 @@ const Select = React.forwardRef(({
     const hasValue = multiple ? value?.length > 0 : value !== undefined && value !== '';
 
     return (
-        <div className={cn("relative", className)}>
+        <div ref={containerRef} className={cn("relative", className)}>
             {label && (
                 <label
                     htmlFor={selectId}

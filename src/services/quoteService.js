@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { validateQuote, sanitizeString } from '../utils/validators';
-import { logDataChange, AuditEventType } from './auditService';
+import { logDataChange } from './auditService';
 import { notifyQuoteCreated, isEmailEnabled } from './emailService';
 
 const convertToSnakeCase = (obj) => {
@@ -49,7 +49,7 @@ const convertToCamelCase = (row) => {
 export const quoteService = {
   async getAll() {
     try {
-      const { data, error } = await supabase?.from('quotes')?.select('*')?.order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('quotes').select('*').order('created_at', { ascending: false });
 
       if (error) throw error;
       return { data: data?.map(convertToCamelCase) || [], error: null };
@@ -60,7 +60,7 @@ export const quoteService = {
 
   async getById(id) {
     try {
-      const { data, error } = await supabase?.from('quotes')?.select('*, quote_items(*)')?.eq('id', id)?.single();
+      const { data, error } = await supabase.from('quotes').select('*, quote_items(*)').eq('id', id).single();
 
       if (error) throw error;
       return { data: data ? convertToCamelCase(data) : null, error: null };
@@ -77,13 +77,13 @@ export const quoteService = {
         return { data: null, error: { message: 'Validation failed', details: validation.errors } };
       }
 
-      const { data: { user } } = await supabase?.auth?.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
       const quoteData = convertToSnakeCase(quote);
       quoteData.created_by = user?.id;
 
-      const { data, error } = await supabase?.from('quotes')?.insert(quoteData)?.select()?.single();
+      const { data, error } = await supabase.from('quotes').insert(quoteData).select().single();
 
       if (error) throw error;
 
@@ -112,9 +112,9 @@ export const quoteService = {
       const quoteData = convertToSnakeCase(quote);
 
       // Get old data for audit
-      const { data: oldData } = await supabase?.from('quotes')?.select('*')?.eq('id', id)?.single();
+      const { data: oldData } = await supabase.from('quotes').select('*').eq('id', id).single();
 
-      const { data, error } = await supabase?.from('quotes')?.update(quoteData)?.eq('id', id)?.select()?.single();
+      const { data, error } = await supabase.from('quotes').update(quoteData).eq('id', id).select().single();
 
       if (error) throw error;
 
@@ -130,9 +130,9 @@ export const quoteService = {
   async delete(id) {
     try {
       // Get data for audit
-      const { data: oldData } = await supabase?.from('quotes')?.select('*')?.eq('id', id)?.single();
+      const { data: oldData } = await supabase.from('quotes').select('*').eq('id', id).single();
 
-      const { error } = await supabase?.from('quotes')?.delete()?.eq('id', id);
+      const { error } = await supabase.from('quotes').delete().eq('id', id);
 
       if (error) throw error;
 

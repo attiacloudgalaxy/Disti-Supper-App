@@ -31,7 +31,7 @@ const InventoryManagement = () => {
 
   const loadProducts = async () => {
     setLoading(true);
-    const { data, error } = await productService?.getAll();
+    const { data, error } = await productService.getAll();
     if (error) {
       setError(error?.message || 'Failed to load products');
     } else {

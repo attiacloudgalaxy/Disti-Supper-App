@@ -39,7 +39,7 @@ const PartnerManagement = () => {
 
   const loadPartners = async () => {
     setLoading(true);
-    const { data, error } = await partnerService?.getAll();
+    const { data, error } = await partnerService.getAll();
     if (error) {
       setError(error?.message || 'Failed to load partners');
     } else {
@@ -158,7 +158,7 @@ const PartnerManagement = () => {
   const handleModalSubmit = async (formData) => {
     if (editingPartner) {
       // Update existing partner
-      const { error } = await partnerService?.update(editingPartner.id, formData);
+      const { error } = await partnerService.update(editingPartner.id, formData);
       if (error) {
         alert('Failed to update partner: ' + error?.message);
       } else {
@@ -168,7 +168,7 @@ const PartnerManagement = () => {
       }
     } else {
       // Create new partner
-      const { error } = await partnerService?.create(formData);
+      const { error } = await partnerService.create(formData);
       if (error) {
         alert('Failed to add partner: ' + error?.message);
       } else {
@@ -180,7 +180,7 @@ const PartnerManagement = () => {
 
   const handleDeletePartner = async (partnerId) => {
     if (window.confirm('Are you sure you want to delete this partner?')) {
-      const { error } = await partnerService?.delete(partnerId);
+      const { error } = await partnerService.delete(partnerId);
       if (error) {
         alert('Failed to delete partner: ' + error?.message);
       } else {

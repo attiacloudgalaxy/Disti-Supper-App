@@ -118,7 +118,7 @@ describe('UserProfileDropdown Component', () => {
 
   it('closes dropdown when clicking outside', async () => {
     const user = userEvent.setup()
-    render(
+    renderWithRouter(
       <div>
         <UserProfileDropdown />
         <div data-testid="outside">Outside</div>

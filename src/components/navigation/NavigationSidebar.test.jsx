@@ -176,7 +176,7 @@ describe('NavigationSidebar Component', () => {
     const mobileButton = screen.getByLabelText(/toggle mobile menu/i)
     await user.click(mobileButton)
     
-    const sidebar = screen.getByRole('navigation')
+    const sidebar = screen.getByRole('navigation', { name: /main navigation/i })
     expect(sidebar).toHaveClass('block')
   })
 
@@ -194,7 +194,7 @@ describe('NavigationSidebar Component', () => {
     })
     await user.click(overlay)
     
-    const sidebar = screen.getByRole('navigation')
+    const sidebar = screen.getByRole('navigation', { name: /main navigation/i })
     expect(sidebar).toHaveClass('hidden')
   })
 
@@ -210,7 +210,7 @@ describe('NavigationSidebar Component', () => {
     const dashboardLink = screen.getByRole('link', { name: /dashboard/i })
     await user.click(dashboardLink)
     
-    const sidebar = screen.getByRole('navigation')
+    const sidebar = screen.getByRole('navigation', { name: /main navigation/i })
     expect(sidebar).toHaveClass('hidden')
   })
 

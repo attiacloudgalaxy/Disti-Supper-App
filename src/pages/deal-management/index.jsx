@@ -33,7 +33,7 @@ const DealManagement = () => {
 
   const loadDeals = async () => {
     setLoading(true);
-    const { data, error } = await dealService?.getAll();
+    const { data, error } = await dealService.getAll();
     if (error) {
       setError(error?.message || 'Failed to load deals');
     } else {
@@ -51,7 +51,7 @@ const DealManagement = () => {
       if (filters?.dateFrom && new Date(deal.closeDate) < new Date(filters.dateFrom)) return false;
       if (filters?.dateTo && new Date(deal.closeDate) > new Date(filters.dateTo)) return false;
       if (filters?.probability) {
-        const [min, max] = filters?.probability?.split('-')?.map(Number);
+        const [min, max] = filters.probability.split('-').map(Number);
         if (deal?.probability < min || deal?.probability > max) return false;
       }
       return true;
@@ -69,7 +69,7 @@ const DealManagement = () => {
   };
 
   const handleDealUpdate = async (updatedDeal) => {
-    const { data, error } = await dealService?.update(selectedDeal?.id, updatedDeal);
+    const { data, error } = await dealService.update(selectedDeal?.id, updatedDeal);
     if (error) {
       alert('Failed to update deal: ' + error?.message);
     } else {
@@ -79,7 +79,7 @@ const DealManagement = () => {
   };
 
   const handleAddDeal = async (newDeal) => {
-    const { data, error } = await dealService?.create(newDeal);
+    const { data, error } = await dealService.create(newDeal);
     if (error) {
       alert('Failed to add deal: ' + error?.message);
     } else {

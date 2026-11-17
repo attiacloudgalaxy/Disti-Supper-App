@@ -37,7 +37,7 @@ const QuoteGeneration = () => {
 
   const loadProducts = async () => {
     setLoading(true);
-    const { data, error } = await productService?.getAll();
+    const { data, error } = await productService.getAll();
     if (!error && data) {
       setProducts(data);
     }
@@ -126,7 +126,7 @@ const QuoteGeneration = () => {
       status: 'draft'
     };
 
-    const { data, error } = await quoteService?.create(quoteData);
+    const { error } = await quoteService.create(quoteData);
     if (error) {
       alert('Failed to generate quote: ' + error?.message);
     } else {

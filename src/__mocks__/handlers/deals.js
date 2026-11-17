@@ -45,7 +45,6 @@ export const dealHandlers = [
   // GET /rest/v1/deals - Get all deals
   http.get('*/rest/v1/deals', ({ request }) => {
     const url = new URL(request.url)
-    const select = url.searchParams.get('select')
     const stage = url.searchParams.get('stage')
     
     let deals = [...mockDeals]
@@ -61,7 +60,6 @@ export const dealHandlers = [
   http.get('*/rest/v1/deals', ({ request }) => {
     const url = new URL(request.url)
     const id = url.searchParams.get('id')
-    const single = url.searchParams.get('single')
     
     if (id) {
       const deal = mockDeals.find(d => d.id === id.replace('eq.', ''))

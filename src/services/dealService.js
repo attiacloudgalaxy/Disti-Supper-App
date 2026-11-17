@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { validateDeal, sanitizeString } from '../utils/validators';
-import { logDataChange, AuditEventType } from './auditService';
+import { logDataChange } from './auditService';
 import { notifyDealCreated, notifyDealStatusChanged, isEmailEnabled } from './emailService';
 
 const convertToSnakeCase = (obj) => {
@@ -36,7 +36,7 @@ const convertToCamelCase = (row) => {
 export const dealService = {
   async getAll() {
     try {
-      const { data, error } = await supabase?.from('deals')?.select('*')?.order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('deals').select('*').order('created_at', { ascending: false });
 
       if (error) throw error;
       return { data: data?.map(convertToCamelCase) || [], error: null };
@@ -47,7 +47,7 @@ export const dealService = {
 
   async getById(id) {
     try {
-      const { data, error } = await supabase?.from('deals')?.select('*')?.eq('id', id)?.single();
+      const { data, error } = await supabase.from('deals').select('*').eq('id', id).single();
 
       if (error) throw error;
       return { data: data ? convertToCamelCase(data) : null, error: null };
@@ -64,13 +64,13 @@ export const dealService = {
         return { data: null, error: { message: 'Validation failed', details: validation.errors } };
       }
 
-      const { data: { user } } = await supabase?.auth?.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
       const dealData = convertToSnakeCase(deal);
       dealData.created_by = user?.id;
 
-      const { data, error } = await supabase?.from('deals')?.insert(dealData)?.select()?.single();
+      const { data, error } = await supabase.from('deals').insert(dealData).select().single();
 
       if (error) throw error;
 
@@ -99,9 +99,9 @@ export const dealService = {
       const dealData = convertToSnakeCase(deal);
 
       // Get old data for audit
-      const { data: oldData } = await supabase?.from('deals')?.select('*')?.eq('id', id)?.single();
+      const { data: oldData } = await supabase.from('deals').select('*').eq('id', id).single();
 
-      const { data, error } = await supabase?.from('deals')?.update(dealData)?.eq('id', id)?.select()?.single();
+      const { data, error } = await supabase.from('deals').update(dealData).eq('id', id).select().single();
 
       if (error) throw error;
 
@@ -122,9 +122,9 @@ export const dealService = {
   async delete(id) {
     try {
       // Get data for audit
-      const { data: oldData } = await supabase?.from('deals')?.select('*')?.eq('id', id)?.single();
+      const { data: oldData } = await supabase.from('deals').select('*').eq('id', id).single();
 
-      const { error } = await supabase?.from('deals')?.delete()?.eq('id', id);
+      const { error } = await supabase.from('deals').delete().eq('id', id);
 
       if (error) throw error;
 
@@ -139,7 +139,7 @@ export const dealService = {
 
   async getByStage(stage) {
     try {
-      const { data, error } = await supabase?.from('deals')?.select('*')?.eq('stage', stage)?.order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('deals').select('*').eq('stage', stage).order('created_at', { ascending: false });
 
       if (error) throw error;
       return { data: data?.map(convertToCamelCase) || [], error: null };

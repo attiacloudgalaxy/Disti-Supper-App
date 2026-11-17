@@ -4,7 +4,7 @@ import { logAuthEvent, AuditEventType } from './auditService';
 export const authService = {
   async signIn(email, password) {
     try {
-      const { data, error } = await supabase?.auth?.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -13,7 +13,7 @@ export const authService = {
         // Log failure
         await logAuthEvent(AuditEventType.AUTH_LOGIN_FAILURE, email, false, { error: error.message });
         throw error;
-      };
+      }
 
       // Log success
       await logAuthEvent(AuditEventType.AUTH_LOGIN_SUCCESS, email, true);
@@ -25,7 +25,7 @@ export const authService = {
 
   async signUp(email, password, fullName, role = 'staff') {
     try {
-      const { data, error } = await supabase?.auth?.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -45,10 +45,10 @@ export const authService = {
 
   async signOut() {
     try {
-      const { data: { user } } = await supabase?.auth?.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       const email = user?.email;
 
-      const { error } = await supabase?.auth?.signOut();
+      const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
       // Log logout
@@ -63,7 +63,7 @@ export const authService = {
 
   async getCurrentUser() {
     try {
-      const { data: { user }, error } = await supabase?.auth?.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
       if (error) throw error;
       return { user, error: null };
     } catch (error) {

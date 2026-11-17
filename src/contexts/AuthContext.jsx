@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
       if (!userId) return
       setProfileLoading(true)
       try {
-        const { data, error } = await supabase?.from('user_profiles')?.select('*')?.eq('id', userId)?.single()
+        const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).single()
         if (!error) setUserProfile(data)
       } catch (error) {
         console.error('Profile load error:', error)
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
     })
 
     // CRITICAL: This must remain synchronous
-    const { data: { subscription } } = supabase?.auth?.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       authStateHandlers?.onChange
     )
 
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   // Auth methods
   const signIn = async (email, password) => {
     try {
-      const { data, error } = await supabase?.auth?.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       return { data, error }
     } catch (error) {
       return { error: { message: 'Network error. Please try again.' } }
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase?.auth?.signOut()
+      const { error } = await supabase.auth.signOut()
       if (!error) {
         setUser(null)
         profileOperations?.clear()
@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }) => {
     if (!user) return { error: { message: 'No user logged in' } }
 
     try {
-      const { data, error } = await supabase?.from('user_profiles')?.update(updates)?.eq('id', user?.id)?.select()?.single()
+      const { data, error } = await supabase.from('user_profiles').update(updates).eq('id', user?.id).select().single()
       if (!error) setUserProfile(data)
       return { data, error }
     } catch (error) {
@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }) => {
 
         // Sign in to Supabase using the Azure token
         // This creates/updates the user in Supabase with Azure profile info
-        const { data, error } = await supabase?.auth?.signInWithIdToken({
+        const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'azure',
           token: tokenResponse.idToken,
           nonce: '' // Azure doesn't require nonce for ID tokens
@@ -174,7 +174,7 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     try {
       const redirectUrl = getRedirectUrl()
-      const { data, error } = await supabase?.auth?.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl

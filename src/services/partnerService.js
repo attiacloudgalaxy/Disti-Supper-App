@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { validatePartner, sanitizeString } from '../utils/validators';
-import { logDataChange, AuditEventType } from './auditService';
+import { logDataChange } from './auditService';
 import { notifyPartnerCreated, notifyPartnerStatusChanged, isEmailEnabled } from './emailService';
 
 const convertToSnakeCase = (obj) => {
@@ -57,7 +57,7 @@ const convertToCamelCase = (row) => {
 export const partnerService = {
   async getAll() {
     try {
-      const { data, error } = await supabase?.from('partners')?.select('*')?.order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('partners').select('*').order('created_at', { ascending: false });
 
       if (error) throw error;
       return { data: data?.map(convertToCamelCase) || [], error: null };
@@ -68,7 +68,7 @@ export const partnerService = {
 
   async getById(id) {
     try {
-      const { data, error } = await supabase?.from('partners')?.select('*')?.eq('id', id)?.single();
+      const { data, error } = await supabase.from('partners').select('*').eq('id', id).single();
 
       if (error) throw error;
       return { data: data ? convertToCamelCase(data) : null, error: null };
@@ -85,13 +85,13 @@ export const partnerService = {
         return { data: null, error: { message: 'Validation failed', details: validation.errors } };
       }
 
-      const { data: { user } } = await supabase?.auth?.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
       const partnerData = convertToSnakeCase(partner);
       partnerData.created_by = user?.id;
 
-      const { data, error } = await supabase?.from('partners')?.insert(partnerData)?.select()?.single();
+      const { data, error } = await supabase.from('partners').insert(partnerData).select().single();
 
       if (error) throw error;
 
@@ -120,9 +120,9 @@ export const partnerService = {
       const partnerData = convertToSnakeCase(partner);
 
       // Get old data for audit log comparison
-      const { data: oldData } = await supabase?.from('partners')?.select('*')?.eq('id', id)?.single();
+      const { data: oldData } = await supabase.from('partners').select('*').eq('id', id).single();
 
-      const { data, error } = await supabase?.from('partners')?.update(partnerData)?.eq('id', id)?.select()?.single();
+      const { data, error } = await supabase.from('partners').update(partnerData).eq('id', id).select().single();
 
       if (error) throw error;
 
@@ -143,9 +143,9 @@ export const partnerService = {
   async delete(id) {
     try {
       // Get data before deletion for audit log
-      const { data: oldData } = await supabase?.from('partners')?.select('*')?.eq('id', id)?.single();
+      const { data: oldData } = await supabase.from('partners').select('*').eq('id', id).single();
 
-      const { error } = await supabase?.from('partners')?.delete()?.eq('id', id);
+      const { error } = await supabase.from('partners').delete().eq('id', id);
 
       if (error) throw error;
 
@@ -160,7 +160,7 @@ export const partnerService = {
 
   async getCertifications(partnerId) {
     try {
-      const { data, error } = await supabase?.from('partner_certifications')?.select('*')?.eq('partner_id', partnerId);
+      const { data, error } = await supabase.from('partner_certifications').select('*').eq('partner_id', partnerId);
 
       if (error) throw error;
       return { data: data || [], error: null };

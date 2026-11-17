@@ -9,12 +9,22 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Phone validation (international format)
 const PHONE_REGEX = /^[\d\s\-+()]{7,20}$/;
 
-// URL validation
-const URL_REGEX = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/;
+// URL validation: parse with the platform URL API (no regex backtracking risk).
+// Accepts http(s) URLs with or without a scheme; requires a dotted hostname.
+const HOSTNAME_REGEX = /^[\da-z.-]+$/i;
+const isValidHttpUrl = (value) => {
+    const candidate = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    try {
+        const { protocol, hostname } = new URL(candidate);
+        return (protocol === 'http:' || protocol === 'https:') && hostname.includes('.') && HOSTNAME_REGEX.test(hostname);
+    } catch {
+        return false;
+    }
+};
 
 // XSS prevention - basic dangerous characters
 const XSS_PATTERNS = [
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+    /<script\b[\s\S]*?<\/script>/gi,
     /javascript:/gi,
     /on\w+\s*=/gi,
     /<iframe/gi,
@@ -106,7 +116,7 @@ export const validateUrl = (url) => {
         return { isValid: false, error: 'Invalid URL format' };
     }
 
-    if (!URL_REGEX.test(url.trim())) {
+    if (!isValidHttpUrl(url.trim())) {
         return { isValid: false, error: 'Invalid URL format' };
     }
 

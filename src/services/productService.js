@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { validateProduct, sanitizeString } from '../utils/validators';
-import { logDataChange, AuditEventType } from './auditService';
+import { logDataChange } from './auditService';
 import { notifyLowStock, isEmailEnabled } from './emailService';
 
 const convertToSnakeCase = (obj) => {
@@ -41,7 +41,7 @@ const convertToCamelCase = (row) => {
 export const productService = {
   async getAll() {
     try {
-      const { data, error } = await supabase?.from('products')?.select('*')?.order('name', { ascending: true });
+      const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
 
       if (error) throw error;
       return { data: data?.map(convertToCamelCase) || [], error: null };
@@ -52,7 +52,7 @@ export const productService = {
 
   async getById(id) {
     try {
-      const { data, error } = await supabase?.from('products')?.select('*')?.eq('id', id)?.single();
+      const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
 
       if (error) throw error;
       return { data: data ? convertToCamelCase(data) : null, error: null };
@@ -69,12 +69,12 @@ export const productService = {
         return { data: null, error: { message: 'Validation failed', details: validation.errors } };
       }
 
-      const { data: { user } } = await supabase?.auth?.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
       const productData = convertToSnakeCase(product);
 
-      const { data, error } = await supabase?.from('products')?.insert(productData)?.select()?.single();
+      const { data, error } = await supabase.from('products').insert(productData).select().single();
 
       if (error) throw error;
 
@@ -98,9 +98,9 @@ export const productService = {
       const productData = convertToSnakeCase(product);
 
       // Get old data for audit
-      const { data: oldData } = await supabase?.from('products')?.select('*')?.eq('id', id)?.single();
+      const { data: oldData } = await supabase.from('products').select('*').eq('id', id).single();
 
-      const { data, error } = await supabase?.from('products')?.update(productData)?.eq('id', id)?.select()?.single();
+      const { data, error } = await supabase.from('products').update(productData).eq('id', id).select().single();
 
       if (error) throw error;
 
@@ -122,9 +122,9 @@ export const productService = {
   async delete(id) {
     try {
       // Get data for audit
-      const { data: oldData } = await supabase?.from('products')?.select('*')?.eq('id', id)?.single();
+      const { data: oldData } = await supabase.from('products').select('*').eq('id', id).single();
 
-      const { error } = await supabase?.from('products')?.delete()?.eq('id', id);
+      const { error } = await supabase.from('products').delete().eq('id', id);
 
       if (error) throw error;
 
@@ -139,7 +139,7 @@ export const productService = {
 
   async getLowStock() {
     try {
-      const { data, error } = await supabase?.from('products')?.select('*')?.filter('available', 'lte', 'low_stock_threshold')?.order('available', { ascending: true });
+      const { data, error } = await supabase.from('products').select('*').filter('available', 'lte', 'low_stock_threshold').order('available', { ascending: true });
 
       if (error) throw error;
       return { data: data?.map(convertToCamelCase) || [], error: null };

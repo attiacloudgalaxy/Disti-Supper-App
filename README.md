@@ -18,7 +18,7 @@ A modern React-based distribution management application.
 
 ## 📋 Prerequisites
 
-- Node.js (v14.x or higher)
+- Node.js (v20.x or higher)
 - npm or yarn
 
 ## 🛠️ Installation
